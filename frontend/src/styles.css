@@ -1,0 +1,240 @@
+/* One palette, as variables, so the rules below read by role and not by color. */
+:root {
+  --bg: #ffffff;
+  --card-bg: #ffffff;
+  --border: #cccccc;
+  --text: #000000;
+  --muted: #666666;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+header.app {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+header.app nav {
+  display: flex;
+  gap: 0.9rem;
+}
+
+header.app .right {
+  margin-left: auto;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem 1rem 4rem;
+}
+
+h1 {
+  font-size: 1.4rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin-top: 2rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 1.2rem 0 0.4rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.8rem;
+  margin: 0.6rem 0;
+}
+
+.row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+input[readonly],
+button[disabled] {
+  color: var(--muted);
+}
+
+.tag {
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 0.5rem;
+  color: var(--muted);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem 0.5rem;
+}
+
+th {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+td.num,
+th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* One size for every icon, and the same for the space of a missing one, so the
+   columns of the rows line up up to the title. */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.icon-button[aria-pressed="true"] {
+  color: var(--text);
+}
+
+/* The flag is the one mark with a color of its own. */
+.icon-button.flagged {
+  color: #c62828;
+}
+
+.icon-button.flagged svg {
+  fill: currentColor;
+}
+
+.icon-space {
+  display: inline-block;
+  width: 26px;
+}
+
+ul.items,
+ul.folders,
+ul.owners {
+  list-style: none;
+  padding: 0;
+}
+
+button.title {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.path {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.tag.selected {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  margin: 0.4rem 0 0.8rem 2rem;
+}
+
+.panel .text {
+  white-space: pre-wrap;
+}
+
+.panel.form {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.viewer audio,
+.viewer video,
+.viewer img {
+  max-width: 100%;
+}
+
+.viewer iframe {
+  width: 100%;
+  height: 70vh;
+  border: none;
+}
+
+.counter,
+.muted {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+footer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
