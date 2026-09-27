@@ -4,6 +4,9 @@ help:
 
 BLOCKS = core backend
 
+# Everything on AWS lives in one region: it can be overridden on the command line.
+REGION ?= eu-west-1
+
 .PHONY: install test lint format typecheck build # run the target in every block
 install test lint format typecheck build:
 	@for b in $(BLOCKS); do $(MAKE) -C $$b $@ || exit $$?; done
@@ -23,6 +26,10 @@ release:
 package:
 	cd backend && $(MAKE) package
 
+.PHONY: prices # print the S3 prices read from the AWS Pricing API (set AWS_PROFILE)
+prices: check-profile
+	cd backend && npx -y tsx scripts/s3-prices.ts $(REGION)
+
 .PHONY: local-up # start DynamoDB Local and create tables
 local-up:
 	docker compose -f local/docker-compose.yml up -d
@@ -30,3 +37,10 @@ local-up:
 .PHONY: local-down # stop local containers
 local-down:
 	docker compose -f local/docker-compose.yml down
+
+# Guard for every command that writes on AWS: without the profile they would all
+# fall back to the default account, which is rarely the one meant.
+check-profile:
+	@test -n "$$AWS_PROFILE" || { echo "export AWS_PROFILE first, see docs/SETUP.md"; exit 1; }
+	@account=$$(aws sts get-caller-identity --query Account --output text) \
+		&& echo "using account $$account"
