@@ -49,6 +49,9 @@ Conditions:
   TwoOrigins: !And
     - !Not [!Equals [!Ref DistributionOrigin, ""]]
     - !Not [!Equals [!Ref DistributionOrigin, !Ref SiteOrigin]]
+  # On the first pass of the deploy the site has no address yet, and SiteOrigin is
+  # the development one: a rule that lists the same origin twice is refused.
+  DevOriginApart: !Not [!Equals [!Ref SiteOrigin, !Ref DevOrigin]]
 
 Globals:
   Function:
@@ -84,9 +87,12 @@ Resources:
         CorsRules:
           - AllowedMethods: [POST]
             AllowedOrigins: !If
-              - TwoOrigins
-              - [!Ref SiteOrigin, !Ref DistributionOrigin, !Ref DevOrigin]
-              - [!Ref SiteOrigin, !Ref DevOrigin]
+              - DevOriginApart
+              - !If
+                - TwoOrigins
+                - [!Ref SiteOrigin, !Ref DistributionOrigin, !Ref DevOrigin]
+                - [!Ref SiteOrigin, !Ref DevOrigin]
+              - [!Ref SiteOrigin]
             AllowedHeaders: ["*"]
             MaxAge: 3000
       LifecycleConfiguration:
