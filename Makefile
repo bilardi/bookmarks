@@ -2,7 +2,7 @@
 help:
 	grep PHONY Makefile | sed 's/.PHONY: /make /' | grep -v grep
 
-BLOCKS = core backend
+BLOCKS = core backend frontend
 
 # Everything on AWS lives in one region, and the Google credentials under one
 # path: both can be overridden on the command line.
@@ -68,6 +68,10 @@ sam-local: local-bundles
 .PHONY: test-api # check the HTTP API end to end, starting what is missing
 test-api:
 	bash local/api-check.sh
+
+.PHONY: dev # run the frontend dev server on 5173, with /api proxied to make sam-local
+dev:
+	$(MAKE) -C frontend dev
 
 .PHONY: validate # lint the SAM templates, the nested ones too (the root only names them)
 validate:
