@@ -21,7 +21,7 @@ export interface Caller {
   email: string;
 }
 
-// API Gateway lowercases header names, sam local rebuilds them capitalised: read
+// API Gateway lowercases header names, sam local rebuilds them capitalized: read
 // them without caring about the case, so both environments behave the same.
 function headerOf(event: ApiEvent, name: string): string | undefined {
   const headers = event.headers ?? {};

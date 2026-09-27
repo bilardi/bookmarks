@@ -71,7 +71,7 @@ describe("saveItemChange", () => {
 });
 
 describe("folder order", () => {
-  it("lists a folder by position and finds the neighbours", async () => {
+  it("lists a folder by position and finds the neighbors", async () => {
     await saveItemChange(undefined, item("b", { position: 2 }));
     await saveItemChange(undefined, item("a", { position: 1 }));
     await saveItemChange(undefined, item("c", { position: 3 }));

@@ -1,6 +1,6 @@
 // Positions are numbers and an item moves by taking one between two others, so a
 // move is one write however many items it jumps over, hidden ones included. When
-// two neighbours come too close, the folder is renumbered once.
+// two neighbors come too close, the folder is renumbered once.
 export const POSITION_GAP_MIN = 1e-6;
 
 export function nextPosition(last: number | undefined): number {
