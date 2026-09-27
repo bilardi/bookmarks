@@ -30,6 +30,11 @@ package:
 prices: check-profile
 	cd backend && npx -y tsx scripts/s3-prices.ts $(REGION)
 
+.PHONY: validate # lint the SAM templates, the nested ones too (the root only names them)
+validate:
+	sam validate --lint --region $(REGION)
+	for t in sam/*.yaml; do sam validate --lint --region $(REGION) --template $$t || exit 1; done
+
 .PHONY: local-up # start DynamoDB Local and create tables
 local-up:
 	docker compose -f local/docker-compose.yml up -d

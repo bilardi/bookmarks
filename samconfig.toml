@@ -1,0 +1,17 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "bookmarks"
+region = "eu-west-1"
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND"
+confirm_changeset = true
+
+# The certificate is a stack of its own, in another region and with no
+# capabilities, because it creates no role; sam/certificate.yaml says why.
+[certificate.deploy.parameters]
+stack_name = "bookmarks-certificate"
+template_file = "sam/certificate.yaml"
+region = "us-east-1"
+resolve_s3 = true
+confirm_changeset = true

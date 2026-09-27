@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: bookmarks infrastructure (root)
+
+Parameters:
+  CognitoDomainPrefix:
+    Type: String
+    Default: bookmarks
+    Description: Prefix of the Cognito domain that hosts the login page; it cannot carry aws, amazon or cognito
+  GoogleClientId:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy, reading Parameter Store; see docs/SETUP.md for the path
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Filled by make deploy, reading Parameter Store; never written here
+  CuratorEmail:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy from CURATOR_EMAIL; the one address let in without an invitation
+  MaxFileSizeMb:
+    Type: String
+    Default: "200"
+    Description: Largest file an upload accepts, in megabytes
+  S3PricesDate:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy, with the day the prices below were read
+  S3PriceGetPer1000:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy from the AWS Pricing API, USD per 1,000 GET
+  S3PricePutPer1000:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy from the AWS Pricing API, USD per 1,000 PUT
+  S3PriceTransferOutPerGb:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy from the AWS Pricing API, USD per GB out to the internet
+  S3PriceStoragePerGbMonth:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy from the AWS Pricing API, USD per GB and month
+  SiteCallbackUrl:
+    Type: String
+    Default: http://localhost:5173
+    Description: Where Cognito sends the browser back; the address of the site after the first deploy
+  DistributionUrl:
+    Type: String
+    Default: ""
+    Description: The CloudFront address, accepted beside the first when the site has a domain
+  WithDomain:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: Set by make deploy, which turns it on only when the certificate stack has a certificate
+  SiteDomainName:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy, reading the certificate stack
+  SiteCertificateArn:
+    Type: String
+    Default: ""
+    Description: Filled by make deploy, reading the certificate stack; the certificate lives in us-east-1
+
+Resources:
+  Data:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: sam/data.yaml
+      Parameters:
+        ProjectName: !Ref AWS::StackName
+
+  Auth:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: sam/auth.yaml
+      Parameters:
+        ProjectName: !Ref AWS::StackName
+        DomainPrefix: !Ref CognitoDomainPrefix
+        GoogleClientId: !Ref GoogleClientId
+        GoogleClientSecret: !Ref GoogleClientSecret
+        CallbackUrl: !Ref SiteCallbackUrl
+        DistributionUrl: !Ref DistributionUrl
+        TableName: !GetAtt Data.Outputs.TableName
+        TableArn: !GetAtt Data.Outputs.TableArn
+        CuratorEmail: !Ref CuratorEmail
+
+  Serverless:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: sam/serverless.yaml
+      Parameters:
+        ProjectName: !Ref AWS::StackName
+        TableName: !GetAtt Data.Outputs.TableName
+        Issuer: !GetAtt Auth.Outputs.Issuer
+        Audience: !GetAtt Auth.Outputs.UserPoolClientId
+        SiteOrigin: !Ref SiteCallbackUrl
+        DistributionOrigin: !Ref DistributionUrl
+        CuratorEmail: !Ref CuratorEmail
+        MaxFileSizeMb: !Ref MaxFileSizeMb
+        S3PricesDate: !Ref S3PricesDate
+        S3PriceGetPer1000: !Ref S3PriceGetPer1000
+        S3PricePutPer1000: !Ref S3PricePutPer1000
+        S3PriceTransferOutPerGb: !Ref S3PriceTransferOutPerGb
+        S3PriceStoragePerGbMonth: !Ref S3PriceStoragePerGbMonth
+
+  # The site knows the API, and the address of the site reaches the pool and the API
+  # as a parameter, given by the second pass of the deploy: reading it from here would
+  # close a circle.
+  Site:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: sam/site.yaml
+      Parameters:
+        ProjectName: !Ref AWS::StackName
+        ApiDomain: !Select [2, !Split ["/", !GetAtt Serverless.Outputs.ApiUrl]]
+        ContentOrigin: !GetAtt Serverless.Outputs.ContentOrigin
+        # The login of the pages reads the metadata of the pool from the issuer and
+        # asks for the tokens on the login domain.
+        CognitoOrigins: !Sub
+          - "https://cognito-idp.${AWS::Region}.amazonaws.com ${LoginDomain}"
+          - LoginDomain: !GetAtt Auth.Outputs.HostedUiDomain
+        WithDomain: !Ref WithDomain
+        DomainName: !Ref SiteDomainName
+        CertificateArn: !Ref SiteCertificateArn
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the HTTP API default stage
+    Value: !GetAtt Serverless.Outputs.ApiUrl
+  UserPoolClientId:
+    Description: App client the browser logs in with
+    Value: !GetAtt Auth.Outputs.UserPoolClientId
+  Issuer:
+    Description: Token issuer, trusted by the API and asked for the login by the site
+    Value: !GetAtt Auth.Outputs.Issuer
+  HostedUiDomain:
+    Description: Domain that hosts the login page
+    Value: !GetAtt Auth.Outputs.HostedUiDomain
+  SiteUrl:
+    Description: Address the site answers on
+    Value: !GetAtt Site.Outputs.SiteUrl
+  DistributionUrl:
+    Description: Address CloudFront gives, which keeps answering beside the domain
+    Value: !GetAtt Site.Outputs.DistributionUrl
+  DistributionDomain:
+    Description: Host name the CNAME of the site points to
+    Value: !GetAtt Site.Outputs.DistributionDomain
+  BucketName:
+    Description: Bucket the built site is uploaded to
+    Value: !GetAtt Site.Outputs.BucketName
+  DistributionId:
+    Description: Distribution to invalidate after an upload
+    Value: !GetAtt Site.Outputs.DistributionId
+  ContentBucketName:
+    Description: Bucket of the files
+    Value: !GetAtt Serverless.Outputs.ContentBucketName
+  TableName:
+    Description: DynamoDB single-table name
+    Value: !GetAtt Data.Outputs.TableName

@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: bookmarks static site (private S3 bucket behind CloudFront)
+
+Parameters:
+  ProjectName:
+    Type: String
+  ApiDomain:
+    Type: String
+    Description: Host name of the HTTP API, without scheme
+  ContentOrigin:
+    Type: String
+    Description: The origin of the signed URLs of the files, which the pages may reach
+  CognitoOrigins:
+    Type: String
+    Description: The origins of the pool and of its login domain, which the login of the pages calls
+  WithDomain:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: Whether the site carries the address below, decided by the deploy
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Address of its own the site answers on, when it carries one
+  CertificateArn:
+    Type: String
+    AllowedPattern: "^$|^arn:aws:acm:us-east-1:[0-9]{12}:certificate/.+$"
+    Description: Certificate for that address, which CloudFront takes only from us-east-1
+
+Conditions:
+  HasDomain: !Equals [!Ref WithDomain, "true"]
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${ProjectName}-site"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${Bucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  # The site is served under /, the API under /api: the prefix belongs to this
+  # composition, so it is removed here instead of living in the API routes.
+  StripApiPrefix:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${ProjectName}-strip-api-prefix"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Remove the /api prefix before forwarding to the HTTP API
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          request.uri = request.uri.replace(/^\/api/, "");
+          if (request.uri === "") {
+            request.uri = "/";
+          }
+          return request;
+        }
+
+  # Single-page app: every path that is not a file is a route of the app. A folder
+  # path carries no dot, since its names are letters, digits, hyphens and underscores.
+  AppRoutes:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${ProjectName}-app-routes"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Serve index.html for the routes of the app
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          if (request.uri.indexOf(".") === -1) {
+            request.uri = "/index.html";
+          }
+          return request;
+        }
+
+  # The data are private, so the pages run only the code of the bundle: no inline
+  # code, no eval, and connections only to the site, the login and the files.
+  SecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${ProjectName}-security-headers"
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: !Sub "default-src 'self'; script-src 'self'; connect-src 'self' ${CognitoOrigins} ${ContentOrigin}; media-src 'self' ${ContentOrigin}; img-src 'self' ${ContentOrigin}; frame-src ${ContentOrigin}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: no-referrer
+            Override: true
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Ref ProjectName
+        DefaultRootObject: index.html
+        Aliases: !If [HasDomain, [!Ref DomainName], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - !Ref "AWS::NoValue"
+        Origins:
+          - Id: site
+            DomainName: !GetAtt Bucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig: {}
+          - Id: api
+            DomainName: !Ref ApiDomain
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          # CachingOptimized
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: !Ref SecurityHeaders
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt AppRoutes.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            # CachingDisabled, and AllViewerExceptHostHeader because the API
+            # answers on its own host name, not on the one the browser asked for.
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt StripApiPrefix.FunctionMetadata.FunctionARN
+
+Outputs:
+  SiteUrl:
+    Description: Address the site answers on
+    Value: !If
+      - HasDomain
+      - !Sub "https://${DomainName}"
+      - !Sub "https://${Distribution.DomainName}"
+  DistributionUrl:
+    Description: Address CloudFront gives, which keeps answering beside the domain
+    Value: !Sub "https://${Distribution.DomainName}"
+  DistributionDomain:
+    Description: Host name the CNAME of the site points to
+    Value: !GetAtt Distribution.DomainName
+  BucketName:
+    Description: Bucket the built site is uploaded to
+    Value: !Ref Bucket
+  DistributionId:
+    Description: Distribution to invalidate after an upload
+    Value: !Ref Distribution

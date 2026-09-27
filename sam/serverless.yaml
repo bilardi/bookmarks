@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: bookmarks serverless backend (HTTP API, Lambda, content bucket)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: bookmarks
+  TableName:
+    Type: String
+  Issuer:
+    Type: String
+    Description: Token issuer the authorizer trusts, the Cognito user pool
+  Audience:
+    Type: String
+    Description: App client the tokens are issued for
+  SiteOrigin:
+    Type: String
+    Description: The origin allowed to call the API and to upload from a browser
+  DistributionOrigin:
+    Type: String
+    Default: ""
+    Description: The address of the distribution, allowed beside the first when they differ
+  DevOrigin:
+    Type: String
+    Default: http://localhost:5173
+  CuratorEmail:
+    Type: String
+  MaxFileSizeMb:
+    Type: String
+    Default: "200"
+  S3PricesDate:
+    Type: String
+    Default: ""
+  S3PriceGetPer1000:
+    Type: String
+    Default: ""
+  S3PricePutPer1000:
+    Type: String
+    Default: ""
+  S3PriceTransferOutPerGb:
+    Type: String
+    Default: ""
+  S3PriceStoragePerGbMonth:
+    Type: String
+    Default: ""
+
+Conditions:
+  TwoOrigins: !And
+    - !Not [!Equals [!Ref DistributionOrigin, ""]]
+    - !Not [!Equals [!Ref DistributionOrigin, !Ref SiteOrigin]]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    # The memory buys the share of processor, as measured in aws-card-clash: four
+    # times the memory ran four times faster, and the charge stayed the same.
+    MemorySize: 1024
+    Timeout: 10
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref TableName
+        LOCAL: "false"
+        DYNAMODB_ENDPOINT_URL: ""
+
+Resources:
+  # The files of every user. Private, like the site: nothing reads it but the
+  # signed URLs the functions hand out.
+  ContentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      # The browser uploads with a signed POST from the pages, which is a call to
+      # another origin; downloads are plain navigations and need no rule.
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [POST]
+            AllowedOrigins: !If
+              - TwoOrigins
+              - [!Ref SiteOrigin, !Ref DistributionOrigin, !Ref DevOrigin]
+              - [!Ref SiteOrigin, !Ref DevOrigin]
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  # HTTP API (v2). Every route needs a token from the pool.
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: !Ref ProjectName
+      CorsConfiguration:
+        AllowOrigins: !If
+          - TwoOrigins
+          - [!Ref SiteOrigin, !Ref DistributionOrigin]
+          - [!Ref SiteOrigin]
+        AllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+        AllowHeaders: [content-type, authorization]
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Ref Issuer
+              # The id token carries the name and the email, and the gateway
+              # matches it on aud.
+              audience: [!Ref Audience]
+
+  ItemsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-items"
+      RetentionInDays: 7
+
+  ItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/dist/lambda/items
+      Handler: index.handler
+      LoggingConfig:
+        LogGroup: !Ref ItemsLogGroup
+      Environment:
+        Variables:
+          CONTENT_BUCKET: !Ref ContentBucket
+          CURATOR_EMAIL: !Ref CuratorEmail
+          S3_PRICES_DATE: !Ref S3PricesDate
+          S3_PRICE_GET_PER_1000: !Ref S3PriceGetPer1000
+          S3_PRICE_PUT_PER_1000: !Ref S3PricePutPer1000
+          S3_PRICE_TRANSFER_OUT_PER_GB: !Ref S3PriceTransferOutPerGb
+          S3_PRICE_STORAGE_PER_GB_MONTH: !Ref S3PriceStoragePerGbMonth
+      # Deleting an item deletes its object, and that is all it does on the bucket.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TableName
+        - Statement:
+            - Effect: Allow
+              Action: s3:DeleteObject
+              Resource: !Sub "${ContentBucket.Arn}/files/*"
+      Events:
+        Me: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /me } }
+        Usage: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /me/usage } }
+        Owners: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /owners } }
+        Tags: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /tags } }
+        ListFolders: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /folders } }
+        CreateFolder: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /folders } }
+        RenameFolder: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: PATCH, Path: /folders } }
+        ShareFolder: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: PUT, Path: /folders/share } }
+        DeleteFolder: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: DELETE, Path: /folders } }
+        ListItems: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /items } }
+        CreateItem: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /items } }
+        PatchItem: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: PATCH, Path: "/items/{id}" } }
+        DeleteItem: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: DELETE, Path: "/items/{id}" } }
+        MoveItem: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: "/items/{id}/move" } }
+
+  FilesLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-files"
+      RetentionInDays: 7
+
+  # The only function that signs URLs on the bucket: a signed URL can do what the
+  # role that signs it can do, so the role reads and writes the files, and no more.
+  FilesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/dist/lambda/files
+      Handler: index.handler
+      LoggingConfig:
+        LogGroup: !Ref FilesLogGroup
+      Environment:
+        Variables:
+          CONTENT_BUCKET: !Ref ContentBucket
+          MAX_FILE_SIZE_MB: !Ref MaxFileSizeMb
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TableName
+        - Statement:
+            - Effect: Allow
+              Action: [s3:GetObject, s3:PutObject]
+              Resource: !Sub "${ContentBucket.Arn}/files/*"
+      Events:
+        Upload: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: POST, Path: "/items/{id}/upload" } }
+        Download: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: GET, Path: "/items/{id}/download" } }
+
+  ViewsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-views"
+      RetentionInDays: 7
+
+  ViewsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/dist/lambda/views
+      Handler: index.handler
+      LoggingConfig:
+        LogGroup: !Ref ViewsLogGroup
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TableName
+      Events:
+        PutView: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Method: PUT, Path: "/items/{id}/view" } }
+
+  FileEventsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-file-events"
+      RetentionInDays: 7
+
+  # Only S3 knows an upload really happened, and how big the object is. The bucket
+  # is not in the variables of this function: the notification of the bucket points
+  # at the function, and a pointer back would close a circle.
+  FileEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/dist/lambda/file-events
+      Handler: index.handler
+      LoggingConfig:
+        LogGroup: !Ref FileEventsLogGroup
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TableName
+      Events:
+        Created:
+          Type: S3
+          Properties:
+            Bucket: !Ref ContentBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: files/
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the HTTP API default stage
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  ContentBucketName:
+    Description: Bucket of the files
+    Value: !Ref ContentBucket
+  ContentOrigin:
+    Description: The origin of the signed URLs, for the security policy of the pages
+    Value: !Sub "https://${ContentBucket}.s3.${AWS::Region}.amazonaws.com"

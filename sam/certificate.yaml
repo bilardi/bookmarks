@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: bookmarks certificate for CloudFront (us-east-1), validated by a record written by hand
+
+Parameters:
+  SiteDomainName:
+    Type: String
+    Default: bookmarks.alessandra.bilardi.net
+    Description: Address of the site
+
+Resources:
+  # In us-east-1, because CloudFront takes a certificate only from there. There is
+  # no zone to write the validation record into: the stack waits until the record,
+  # shown by make certificate-record, is written in the DNS of the parent domain.
+  # Public certificates of ACM cost nothing, and renew by themselves as long as that
+  # record stays.
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref SiteDomainName
+      ValidationMethod: DNS
+
+Outputs:
+  CertificateArn:
+    Description: Certificate the distribution presents
+    Value: !Ref Certificate
+  SiteDomainName:
+    Description: Address the certificate is for
+    Value: !Ref SiteDomainName

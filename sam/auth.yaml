@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: bookmarks authentication (Cognito user pool federated with Google, by invitation)
+
+Parameters:
+  ProjectName:
+    Type: String
+  DomainPrefix:
+    Type: String
+  GoogleClientId:
+    Type: String
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+  CallbackUrl:
+    Type: String
+  DistributionUrl:
+    Type: String
+    Default: ""
+    Description: The address of the distribution, listed beside the first when they differ
+  DevCallbackUrl:
+    Type: String
+    Default: http://localhost:5173
+    Description: Where the development server answers, kept in the list so the real login can be tried locally
+  TableName:
+    Type: String
+  TableArn:
+    Type: String
+  CuratorEmail:
+    Type: String
+    Description: The one address let in without an invitation
+
+Conditions:
+  TwoAddresses: !And
+    - !Not [!Equals [!Ref DistributionUrl, ""]]
+    - !Not [!Equals [!Ref DistributionUrl, !Ref CallbackUrl]]
+  DevAddressApart: !Not [!Equals [!Ref CallbackUrl, !Ref DevCallbackUrl]]
+
+Resources:
+  PreSignUpLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-pre-signup"
+      RetentionInDays: 7
+
+  # Nobody enters without an invitation: Cognito asks this function before creating
+  # a user, also at the first sign-in with Google. It reads one key, and nothing else.
+  PreSignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/dist/lambda/pre-signup
+      Handler: index.handler
+      Runtime: nodejs22.x
+      MemorySize: 1024
+      # Cognito waits five seconds for a trigger, and not one more.
+      Timeout: 5
+      LoggingConfig:
+        LogGroup: !Ref PreSignUpLogGroup
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref TableName
+          CURATOR_EMAIL: !Ref CuratorEmail
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:GetItem
+              Resource: !Ref TableArn
+
+  PreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PreSignUpFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+
+  # No passwords here: people arrive from Google, so the pool only keeps the
+  # identity and the name it receives.
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref ProjectName
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignUpFunction.Arn
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+
+  GoogleProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      UserPoolId: !Ref UserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
+        authorize_scopes: "openid email profile"
+      AttributeMapping:
+        email: email
+        name: name
+
+  # Authorization code with PKCE and no client secret, as in aws-card-clash: the
+  # browser is a public client, so nothing here can be trusted to hold a secret.
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: GoogleProvider
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "${ProjectName}-web"
+      GenerateSecret: false
+      SupportedIdentityProviders: [Google]
+      AllowedOAuthFlows: [code]
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes: [openid, email, profile]
+      CallbackURLs: !If
+        - DevAddressApart
+        - !If
+          - TwoAddresses
+          - [!Ref CallbackUrl, !Ref DistributionUrl, !Ref DevCallbackUrl]
+          - [!Ref CallbackUrl, !Ref DevCallbackUrl]
+        - [!Ref CallbackUrl]
+      LogoutURLs: !If
+        - DevAddressApart
+        - !If
+          - TwoAddresses
+          - [!Ref CallbackUrl, !Ref DistributionUrl, !Ref DevCallbackUrl]
+          - [!Ref CallbackUrl, !Ref DevCallbackUrl]
+        - [!Ref CallbackUrl]
+      # The shortest lifetimes Cognito allows: the tokens live in the storage of the
+      # tab, and a token copied by a script in the page works for an hour at most.
+      # Written out, because after a change removing these lines would not put the
+      # defaults back.
+      RefreshTokenValidity: 60
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: minutes
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Ref DomainPrefix
+
+Outputs:
+  UserPoolId:
+    Description: Identifier of the user pool
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: App client the browser logs in with, and the audience of the tokens
+    Value: !Ref UserPoolClient
+  Issuer:
+    Description: Token issuer the API authorizer trusts
+    Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+  HostedUiDomain:
+    Description: Domain that hosts the login page
+    Value: !Sub "https://${DomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
