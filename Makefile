@@ -30,6 +30,23 @@ package:
 prices: check-profile
 	cd backend && npx -y tsx scripts/s3-prices.ts $(REGION)
 
+.PHONY: local-bundles # build lambdas readable by the local containers
+local-bundles: package
+	# sam local mounts each bundle into its container without an SELinux label, and
+	# where SELinux is enforced a container cannot read a file of the home. The
+	# bundles get the label containers may read, and the files a later build writes
+	# keep it, since they inherit the label of their folder.
+	@if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; then \
+		chcon -R -t container_file_t backend/dist/lambda; fi
+
+.PHONY: sam-local # build lambdas and run the HTTP API locally (needs make local-up for DynamoDB)
+sam-local: local-bundles
+	sam local start-api --docker-network bookmarks_default --env-vars local/env.json
+
+.PHONY: test-api # check the HTTP API end to end, starting what is missing
+test-api:
+	bash local/api-check.sh
+
 .PHONY: validate # lint the SAM templates, the nested ones too (the root only names them)
 validate:
 	sam validate --lint --region $(REGION)
