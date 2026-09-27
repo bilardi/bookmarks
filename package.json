@@ -1,0 +1,18 @@
+{
+  "name": "bookmarks",
+  "version": "0.0.0",
+  "description": "Private bookmarks: links, files on S3 and short notes, in ordered folders and tags, shared by invitation.",
+  "homepage": "https://github.com/bilardi/bookmarks#readme",
+  "bugs": {
+    "url": "https://github.com/bilardi/bookmarks/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bilardi/bookmarks.git"
+  },
+  "license": "MIT",
+  "author": "Alessandra Bilardi",
+  "scripts": {
+    "version": "git-cliff --offline --tag v$npm_package_version -o CHANGELOG.md && git add CHANGELOG.md"
+  }
+}

@@ -1,0 +1,23 @@
+name: bookmarks
+services:
+  dynamodb:
+    container_name: dynamodb-local
+    image: public.ecr.aws/aws-dynamodb-local/aws-dynamodb-local:latest
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb"]
+
+  dynamodb-init:
+    container_name: dynamodb-init
+    image: amazon/aws-cli
+    restart: "no"
+    environment:
+      - AWS_ACCESS_KEY_ID=fake
+      - AWS_SECRET_ACCESS_KEY=fake
+      - AWS_DEFAULT_REGION=eu-west-1
+      - DYNAMODB_ENDPOINT_URL=http://dynamodb:8000
+    volumes:
+      - .:/local:ro,z
+    depends_on:
+      - dynamodb
+    entrypoint: ["/bin/sh", "/local/dynamodb-init.sh"]
