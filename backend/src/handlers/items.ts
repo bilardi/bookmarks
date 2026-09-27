@@ -9,7 +9,7 @@ import {
   shareFolderBodySchema,
 } from "@bookmarks/core";
 
-import { callerOf, hasRequestHeader, json, queryOf, readBody, type ApiEvent, type JsonResult } from "../http";
+import { callerOf, json, queryOf, readBody, type ApiEvent, type JsonResult } from "../http";
 import { ok, respond } from "../result";
 import { createFolder, deleteFolder, listFoldersOf, renameFolder, shareFolder } from "../operations/folders";
 import { createItem, deleteItem, filterItems, listFolder, listTags, moveItem, updateItem } from "../operations/items";
@@ -36,9 +36,6 @@ export function makeItems(storage: Storage) {
     const caller = callerOf(event);
     const owner = queryOf(event, "owner") ?? caller.userId;
     const id = event.pathParameters?.id ?? "";
-    if (event.requestContext.http.method !== "GET" && !hasRequestHeader(event)) {
-      return json(403, { error: "missing-request-header" });
-    }
 
     switch (event.routeKey) {
       case "GET /me":

@@ -23,7 +23,6 @@ function event(
     body?: string;
     pathParameters?: Record<string, string>;
     query?: Record<string, string>;
-    write?: boolean;
   } = {},
 ): APIGatewayProxyEventV2WithJWTAuthorizer {
   const [method] = routeKey.split(" ");
@@ -32,7 +31,7 @@ function event(
     routeKey,
     rawPath: "",
     rawQueryString: "",
-    headers: options.write === false ? {} : { "x-bookmarks-request": "1" },
+    headers: {},
     queryStringParameters: options.query,
     requestContext: {
       http: { method, path: "", protocol: "HTTP/1.1", sourceIp: "127.0.0.1", userAgent: "test" },
@@ -60,10 +59,9 @@ describe("items handler", () => {
     expect(bodyOf(listed).map((i: { title: string }) => i.title)).toEqual(["a"]);
   });
 
-  it("refuses a write without the request header", async () => {
-    const res = await items(event("POST /items", { body: JSON.stringify({ title: "a" }), write: false }));
-    expect(res.statusCode).toBe(403);
-    expect(bodyOf(res)).toEqual({ error: "missing-request-header" });
+  it("accepts a write with no header beyond the token", async () => {
+    const res = await items(event("POST /items", { body: JSON.stringify({ title: "a" }) }));
+    expect(res.statusCode).toBe(200);
   });
 
   it("answers 400 to a body that is not JSON", async () => {

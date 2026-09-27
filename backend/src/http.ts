@@ -64,10 +64,3 @@ export function readBody(event: ApiEvent): unknown {
 export function queryOf(event: ApiEvent, name: string): string | undefined {
   return event.queryStringParameters?.[name];
 }
-
-// Writing routes want a header that a form on another site cannot send: with the
-// token in a cookie, this is what closes the door to cross-site requests left open
-// by SameSite alone.
-export function hasRequestHeader(event: ApiEvent): boolean {
-  return headerOf(event, "x-bookmarks-request") !== undefined;
-}

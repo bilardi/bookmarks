@@ -10,7 +10,6 @@ export type ErrorCode =
   | "no-file"
   | "root-folder"
   | "forbidden"
-  | "missing-request-header"
   | "not-found"
   | "folder-exists"
   | "folder-not-empty"
@@ -35,7 +34,6 @@ export const STATUS: Record<ErrorCode, number> = {
   "no-file": 400,
   "root-folder": 400,
   forbidden: 403,
-  "missing-request-header": 403,
   "not-found": 404,
   "folder-exists": 409,
   "folder-not-empty": 409,

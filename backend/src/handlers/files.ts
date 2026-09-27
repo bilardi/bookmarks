@@ -1,4 +1,4 @@
-import { callerOf, hasRequestHeader, json, queryOf, type ApiEvent, type JsonResult } from "../http";
+import { callerOf, json, queryOf, type ApiEvent, type JsonResult } from "../http";
 import { respond } from "../result";
 import { requestDownload, requestUpload } from "../operations/files";
 import type { Storage } from "../storage";
@@ -8,7 +8,6 @@ export function makeFiles(storage: Storage, maxBytes: number) {
     const caller = callerOf(event);
     const id = event.pathParameters?.id ?? "";
     if (event.routeKey === "POST /items/{id}/upload") {
-      if (!hasRequestHeader(event)) return json(403, { error: "missing-request-header" });
       return respond(await requestUpload(caller, id, storage, maxBytes));
     }
     if (event.routeKey === "GET /items/{id}/download") {

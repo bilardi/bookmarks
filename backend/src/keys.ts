@@ -44,3 +44,11 @@ export function pathGsiPk(sub: string, path: string): string {
 export function fileKey(sub: string, id: string): string {
   return `files/${sub}/${id}`;
 }
+
+// An invitation is keyed by the address, lowercased: that is what the trigger has
+// in hand, before the person has a sub.
+export const INVITE_SK = "INVITE";
+
+export function invitePk(email: string): string {
+  return `INVITE#${email.toLowerCase()}`;
+}

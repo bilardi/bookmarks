@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { callerOf, hasRequestHeader, readBody, type ApiEvent } from "../src/http";
+import { callerOf, readBody, type ApiEvent } from "../src/http";
 
 function event(overrides: Partial<ApiEvent>): ApiEvent {
   return {
@@ -20,12 +20,5 @@ describe("readBody", () => {
   it("is undefined for a body that is not JSON, so the schema refuses it", () => {
     expect(readBody(event({ body: "{" }))).toBeUndefined();
     expect(readBody(event({ body: '{"a":1}' }))).toEqual({ a: 1 });
-  });
-});
-
-describe("hasRequestHeader", () => {
-  it("finds the header whatever its case", () => {
-    expect(hasRequestHeader(event({ headers: { "X-Bookmarks-Request": "1" } }))).toBe(true);
-    expect(hasRequestHeader(event({}))).toBe(false);
   });
 });
