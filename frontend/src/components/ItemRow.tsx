@@ -93,15 +93,17 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, onCh
           <a className="title" href={item.link} target="_blank" rel="noopener noreferrer">
             {item.title}
           </a>
-        ) : (
-          <button
-            type="button"
-            className="title"
-            disabled={pending}
-            onClick={() => toggle(item.file !== undefined ? "open" : "text")}
-          >
+        ) : item.file !== undefined ? (
+          <button type="button" className="title" disabled={pending} onClick={() => toggle("open")}>
             {pending ? `${item.title} (uploading)` : item.title}
           </button>
+        ) : readable ? (
+          // A note opens what there is to read: the text, and the own note after it.
+          <button type="button" className="title" onClick={() => toggle("text")}>
+            {item.title}
+          </button>
+        ) : (
+          <span className="title">{item.title}</span>
         )}
         {showPath && <span className="path">{item.path === "" ? "/" : item.path}</span>}
         {tags.map((tag) => (

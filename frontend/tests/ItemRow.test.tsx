@@ -62,6 +62,16 @@ describe("ItemRow", () => {
     expect(screen.getByText("read this")).toBeTruthy();
   });
 
+  it("makes the title of a note clickable only when there is something to read", () => {
+    const { unmount } = row({ item: item({ title: "Empty" }) });
+    expect(screen.queryByRole("button", { name: "Empty" })).toBeNull();
+    expect(screen.getByText("Empty")).toBeTruthy();
+    unmount();
+    row({ item: item({ title: "Shared", text: "from the owner" }), own: false, owner: "o1" });
+    fireEvent.click(screen.getByRole("button", { name: "Shared" }));
+    expect(screen.getByText("from the owner")).toBeTruthy();
+  });
+
   it("opens a link in another tab, with no reference back", () => {
     row({ item: item({ title: "Docs", link: "https://example.com/" }) });
     const link = screen.getByRole("link", { name: "Docs" });

@@ -7,6 +7,8 @@ import { Link } from "./components/Link";
 import { currentUser, hasSession, isCognito, login, logout, refusal, startSession } from "./auth";
 import { useRoute } from "./router";
 import { Bookmarks } from "./pages/Bookmarks";
+import { Shared } from "./pages/Shared";
+import { Usage } from "./pages/Usage";
 
 type Session = "waiting" | "in" | "out" | "refused" | "failed";
 
@@ -89,6 +91,8 @@ export function App() {
         <strong>Bookmarks</strong>
         <nav aria-label="Sections">
           <Link to="/">My bookmarks</Link>
+          <Link to="/shared">Shared</Link>
+          <Link to="/usage">Usage</Link>
         </nav>
         <span className="right">
           <span>{me?.name ?? currentUser().name}</span>
@@ -109,6 +113,8 @@ export function App() {
             tags={route.tags}
           />
         )}
+        {route.name === "shared" && <Shared />}
+        {route.name === "usage" && <Usage />}
       </main>
       <footer>
         <p className="muted">
