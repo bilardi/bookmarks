@@ -1,6 +1,6 @@
 # Deployment
 
-Putting the system on AWS and taking it away again. Preparing an account for the first time, the Google client included, is described in [SETUP.md](SETUP.md), and it is done once. What follows is done again every time something changes in `core/`, `backend/` or the templates in `sam/`.
+Putting the system on AWS and taking it away again. Preparing an account for the first time, the Google client included, is described in [SETUP.md](SETUP.md), and it is done once. What follows is done again every time something changes in `core/`, `backend/`, `frontend/` or the templates in `sam/`, and a change to `frontend/` alone has a shorter command of its own. `core/` is in that list because both the other two build on it.
 
 ## The one command
 
@@ -12,12 +12,13 @@ export CURATOR_EMAIL=<the address>
 make deploy
 ```
 
-That single command does four things in order:
+That single command does five things in order:
 
 1. it reads the S3 prices from the AWS Pricing API, which the page of the usage shows beside the bytes
 2. it reads the Google credentials from Parameter Store
 3. it applies the stacks twice: the second pass hands Cognito and the API the address of the distribution that the first pass created
-4. it runs the checks
+4. it builds the site with the identity of the pool, uploads it and invalidates the cache of the distribution
+5. it runs the checks
 
 The prices come first on purpose. If the Pricing API does not return one of them, because AWS renamed a usage type or answers with two products where one is expected, the command stops with the name of the missing price and deploys nothing: the stack keeps the prices it had, and a cost is never shown as zero. How the prices are read is in `backend/src/pricing.ts`, and they can be read alone with `make prices`.
 
@@ -61,6 +62,8 @@ It ends by printing the second record: the address of the site as a CNAME to the
 
 | Check | What it proves |
 |---|---|
+| the site is served | the page is in the bucket, and only the distribution reads it |
+| a route of the app falls back to the page | an address like `/my/lessons` is a route of the app, served with the page, and not a missing file |
 | the API answers through CloudFront, asking for a token | the `/api` prefix is removed, the route matched, and the authorizer is in front of it |
 | the API asks for a token when called directly too | the authorizer does not depend on CloudFront |
 | an unknown API route stays a 404 | what the API refuses arrives as the API said it, because the pages read those codes |
@@ -76,8 +79,11 @@ The login itself needs a person and a Google account, so it is checked by hand, 
 
 | Command | What it does |
 |---|---|
+| `make deploy-site` | rebuilds and uploads the site alone, and invalidates the cache: seconds instead of minutes when only the pages changed |
 | `make outputs` | the addresses of what is deployed, the site and the login page included |
 | `make prices` | the S3 prices as the deploy would read them, writing nothing |
+
+`make deploy-site` reads the outputs of the stack every time: the build is static, so the identity of the pool is baked into it, and a new pool means a new build.
 
 ## Taking it away
 

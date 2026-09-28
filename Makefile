@@ -135,7 +135,23 @@ deploy: check-profile package
 			SiteCallbackUrl=$(call output,SiteUrl) DistributionUrl=$(call output,DistributionUrl)
 	@name=$(call certificate_output,SiteDomainName); test -z "$$name" || test "$(DOMAIN)" = "off" \
 		|| echo "the DNS of $$name has to be a CNAME to $(call output,DistributionDomain)"
+	$(MAKE) deploy-site
 	$(MAKE) check-deployed
+
+.PHONY: deploy-site # rebuild and upload the site alone, without CloudFormation (set AWS_PROFILE)
+deploy-site: check-profile
+	# The build is static, so the identity of the pool is baked into it: a new pool
+	# means a new build, which is why this reads the outputs every time.
+	@issuer=$(call output,Issuer) \
+		&& client=$(call output,UserPoolClientId) \
+		&& bucket=$(call output,BucketName) \
+		&& dist=$(call output,DistributionId) \
+		&& test -n "$$issuer" && test -n "$$client" && test -n "$$bucket" && test -n "$$dist" \
+		|| { echo "the stack has no site outputs: deploy it first"; exit 1; }; \
+		VITE_AUTH=cognito VITE_COGNITO_ISSUER=$$issuer VITE_COGNITO_CLIENT_ID=$$client $(MAKE) -C frontend build \
+		&& aws s3 sync frontend/dist s3://$$bucket --delete \
+		&& aws cloudfront create-invalidation --distribution-id $$dist --paths '/*' \
+			--query Invalidation.Status --output text
 
 .PHONY: check-deployed # check the deployed system, writing nothing (set AWS_PROFILE)
 check-deployed: check-profile
