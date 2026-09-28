@@ -46,6 +46,7 @@ function check(name: string, answer: Answer, status: number, error?: string): vo
 }
 
 try {
+  check("GET /public/items reaches the public function", await call("GET", "/public/items"), 200);
   check("GET /me reaches the items function", await call("GET", "/me"), 200);
   check("GET /me/usage answers without prices", await call("GET", "/me/usage"), 200);
   check("GET /owners", await call("GET", "/owners"), 200);

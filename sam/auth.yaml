@@ -22,6 +22,10 @@ Parameters:
     Type: String
     Default: http://localhost:5173
     Description: Where the development server answers, kept in the list so the real login can be tried locally
+  LogoutPath:
+    Type: String
+    Default: /public
+    Description: Where the logout lands, the public page; PATHS.afterLogout in frontend/src/router.ts is the same
   TableName:
     Type: String
   TableArn:
@@ -128,9 +132,11 @@ Resources:
         - DevAddressApart
         - !If
           - TwoAddresses
-          - [!Ref CallbackUrl, !Ref DistributionUrl, !Ref DevCallbackUrl]
-          - [!Ref CallbackUrl, !Ref DevCallbackUrl]
-        - [!Ref CallbackUrl]
+          - - !Sub "${CallbackUrl}${LogoutPath}"
+            - !Sub "${DistributionUrl}${LogoutPath}"
+            - !Sub "${DevCallbackUrl}${LogoutPath}"
+          - [!Sub "${CallbackUrl}${LogoutPath}", !Sub "${DevCallbackUrl}${LogoutPath}"]
+        - [!Sub "${CallbackUrl}${LogoutPath}"]
       # The shortest lifetimes Cognito allows: the tokens live in the storage of the
       # tab, and a token copied by a script in the page works for an hour at most.
       # Written out, because after a change removing these lines would not put the

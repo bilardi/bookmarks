@@ -1,7 +1,7 @@
 #!/bin/sh
 # Checks the deployed system without writing anything: the site is served and its
-# routes fall back to the page, the API is behind the authorizer through CloudFront
-# and directly, the login page reaches Google, the pages carry the security headers,
+# routes fall back to the page, the public bookmarks answer without a login and from
+# the cache, the API is behind the authorizer through CloudFront and directly, the login page reaches Google, the pages carry the security headers,
 # and the files cannot be read without a signed URL. Usage: bash scripts/deployed-check.sh
 
 set -e
@@ -56,6 +56,12 @@ echo ""
 
 check "the site is served" 200 "$(status "$SITE/")"
 check "a route of the app falls back to the page" 200 "$(status "$SITE/my/lessons")"
+check "the public page is served without a login" 200 "$(status "$SITE/public")"
+check "the public bookmarks answer without a login" 200 "$(status "$SITE/api/public/items")"
+# The second request of the same address comes from the cache of CloudFront.
+curl -s -o /dev/null "$SITE/api/public/items"
+contains "the public bookmarks come from the cache" "x-cache: hit from cloudfront" \
+    "$(curl -s -o /dev/null -D - "$SITE/api/public/items" | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
 check "the API answers through CloudFront, asking for a token" 401 "$(status "$SITE/api/me")"
 check "the API asks for a token when called directly too" 401 "$(status "$API/me")"
 check "an unknown API route stays a 404" 404 "$(status "$SITE/api/nothing-here")"

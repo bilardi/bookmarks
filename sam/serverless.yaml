@@ -102,7 +102,7 @@ Resources:
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
 
-  # HTTP API (v2). Every route needs a token from the pool.
+  # HTTP API (v2). Every route needs a token from the pool, except the public one.
   HttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
@@ -124,6 +124,11 @@ Resources:
               # The id token carries the name and the email, and the gateway
               # matches it on aud.
               audience: [!Ref Audience]
+      # The public route answers anybody: a limit of its own, beside the cache of CloudFront.
+      RouteSettings:
+        "GET /public/items":
+          ThrottlingBurstLimit: 20
+          ThrottlingRateLimit: 10
 
   ItemsLogGroup:
     Type: AWS::Logs::LogGroup
@@ -250,6 +255,28 @@ Resources:
                 Rules:
                   - Name: prefix
                     Value: files/
+
+  PublicLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProjectName}-public"
+      RetentionInDays: 7
+
+  # The page without a login reads through this one, which can only read.
+  PublicFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/dist/lambda/public
+      Handler: index.handler
+      LoggingConfig:
+        LogGroup: !Ref PublicLogGroup
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref TableName
+      Events:
+        PublicItems:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /public/items, Auth: { Authorizer: NONE } }
 
 Outputs:
   ApiUrl:

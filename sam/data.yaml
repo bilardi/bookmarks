@@ -22,6 +22,8 @@ Resources:
         - { AttributeName: gsi1sk, AttributeType: N }
         - { AttributeName: gsi2pk, AttributeType: S }
         - { AttributeName: gsi2sk, AttributeType: S }
+        - { AttributeName: gsi3pk, AttributeType: S }
+        - { AttributeName: gsi3sk, AttributeType: S }
       KeySchema:
         - { AttributeName: pk, KeyType: HASH }
         - { AttributeName: sk, KeyType: RANGE }
@@ -37,6 +39,12 @@ Resources:
           KeySchema:
             - { AttributeName: gsi2pk, KeyType: HASH }
             - { AttributeName: gsi2sk, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+        # The published items, for the page without a login: sparse, only they carry the key.
+        - IndexName: gsi3
+          KeySchema:
+            - { AttributeName: gsi3pk, KeyType: HASH }
+            - { AttributeName: gsi3sk, KeyType: RANGE }
           Projection: { ProjectionType: ALL }
 
 Outputs:

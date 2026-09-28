@@ -64,6 +64,9 @@ It ends by printing the second record: the address of the site as a CNAME to the
 |---|---|
 | the site is served | the page is in the bucket, and only the distribution reads it |
 | a route of the app falls back to the page | an address like `/my/lessons` is a route of the app, served with the page, and not a missing file |
+| the public page is served without a login | `/public` is a route of the app like the others, open to everybody |
+| the public bookmarks answer without a login | the public route has no authorizer, and the `/api/public` prefix reaches it through CloudFront |
+| the public bookmarks come from the cache | CloudFront keeps the public answer, so a visitor reloading the page does not reach the function every time |
 | the API answers through CloudFront, asking for a token | the `/api` prefix is removed, the route matched, and the authorizer is in front of it |
 | the API asks for a token when called directly too | the authorizer does not depend on CloudFront |
 | an unknown API route stays a 404 | what the API refuses arrives as the API said it, because the pages read those codes |

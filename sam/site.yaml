@@ -128,6 +128,24 @@ Resources:
             ReferrerPolicy: no-referrer
             Override: true
 
+  # Five minutes for the public bookmarks: a visitor reloading a thousand times
+  # reaches the API once every five minutes. Nothing of the viewer is in the key,
+  # because the answer is the same for everybody.
+  PublicCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${ProjectName}-public"
+        DefaultTTL: 300
+        MaxTTL: 300
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          CookiesConfig: { CookieBehavior: none }
+          HeadersConfig: { HeaderBehavior: none }
+          QueryStringsConfig: { QueryStringBehavior: none }
+
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -161,6 +179,15 @@ Resources:
             - EventType: viewer-request
               FunctionARN: !GetAtt AppRoutes.FunctionMetadata.FunctionARN
         CacheBehaviors:
+          # Before /api/*, since CloudFront takes the first pattern that matches.
+          - PathPattern: /api/public/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD]
+            CachePolicyId: !Ref PublicCachePolicy
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt StripApiPrefix.FunctionMetadata.FunctionARN
           - PathPattern: /api/*
             TargetOriginId: api
             ViewerProtocolPolicy: https-only
