@@ -63,7 +63,13 @@ local-bundles: package
 
 .PHONY: sam-local # build lambdas and run the HTTP API locally (needs make local-up for DynamoDB)
 sam-local: local-bundles
-	sam local start-api --docker-network bookmarks_default --env-vars local/env.json
+	# Every function keeps its container after the first call: without this, each call
+	# starts a new one, and a page that makes six calls waits for six starts. LAZY and
+	# not EAGER: with nested stacks, EAGER starts a container per function that the
+	# first call does not reuse, and at the exit those are left running. A bundle built
+	# again by make local-bundles replaces only its own container, so a change to the
+	# backend needs no restart.
+	sam local start-api --docker-network bookmarks_default --env-vars local/env.json --warm-containers LAZY
 
 .PHONY: test-api # check the HTTP API end to end, starting what is missing
 test-api:
@@ -85,6 +91,13 @@ local-up:
 .PHONY: local-down # stop local containers
 local-down:
 	docker compose -f local/docker-compose.yml down
+
+.PHONY: local-clean # remove the local containers, the Lambda ones sam local may leave behind included
+local-clean: local-down
+	# sam local names its containers at random, and its labels carry the name of the
+	# function in the template but nothing of the project: they are found by image,
+	# which takes those of any project running sam local on this machine at the time.
+	docker ps -aq --filter ancestor=public.ecr.aws/lambda/nodejs:22-rapid-x86_64 | xargs -r docker rm -f
 
 # Guard for every command that writes on AWS: without the profile they would all
 # fall back to the default account, which is rarely the one meant.

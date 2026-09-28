@@ -31,10 +31,13 @@ wait_for() {
     return 1
 }
 
+# SIGINT, as a Ctrl+C would send, and a wait for it to end: that is when sam local
+# removes the containers it keeps warm, and a plain kill leaves them running.
 stop_sam() {
     if [ -n "$started_sam" ]; then
         echo "--> stopping the API started here"
-        kill "$started_sam" 2>/dev/null || true
+        kill -INT "$started_sam" 2>/dev/null || true
+        wait "$started_sam" 2>/dev/null || true
     fi
 }
 trap stop_sam EXIT
@@ -55,7 +58,9 @@ if up "$API_URL/"; then
     echo "--> API already up, using it"
 else
     echo "--> starting the API, log in $SAM_LOG"
-    sam local start-api --docker-network bookmarks_default --env-vars local/env.json \
+    # A command started with & in a script ignores SIGINT, and env puts it back: it is
+    # the signal stop_sam sends.
+    env --default-signal=INT sam local start-api --docker-network bookmarks_default --env-vars local/env.json --warm-containers LAZY \
         >"$SAM_LOG" 2>&1 &
     started_sam=$!
     wait_for "$API_URL/"
