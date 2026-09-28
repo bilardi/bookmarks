@@ -21,30 +21,34 @@ export function Usage() {
   if (usage === null) return <p>Loading ..</p>;
   return (
     <section>
-      <table>
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th className="num">GET</th>
-            <th className="num">GET bytes</th>
-            <th className="num">PUT</th>
-            <th className="num">PUT bytes</th>
-            <th className="num">Cost</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usage.months.map((m) => (
-            <tr key={m.month}>
-              <td>{m.month}</td>
-              <td className="num">{m.getCount}</td>
-              <td className="num">{formatBytes(m.getBytes)}</td>
-              <td className="num">{m.putCount}</td>
-              <td className="num">{formatBytes(m.putBytes)}</td>
-              <td className="num">{m.cost === undefined ? "" : formatUsd(m.cost)}</td>
+      {usage.months.length === 0 ? (
+        <p>No traffic yet.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th className="num">GET</th>
+              <th className="num">GET bytes</th>
+              <th className="num">PUT</th>
+              <th className="num">PUT bytes</th>
+              <th className="num">Cost</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {usage.months.map((m) => (
+              <tr key={m.month}>
+                <td>{m.month}</td>
+                <td className="num">{m.getCount}</td>
+                <td className="num">{formatBytes(m.getBytes)}</td>
+                <td className="num">{m.putCount}</td>
+                <td className="num">{formatBytes(m.putBytes)}</td>
+                <td className="num">{m.cost === undefined ? "" : formatUsd(m.cost)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <p>
         {`Stored: ${formatBytes(usage.storedBytes)}`}
         {usage.storageCost !== undefined && `, ${formatUsd(usage.storageCost)} a month`}

@@ -27,6 +27,14 @@ describe("Usage", () => {
     expect(screen.getByText(/read on 2026-09-27/)).toBeTruthy();
   });
 
+  it("says there is no traffic yet instead of an empty table", async () => {
+    mockApi({ "GET /api/me/usage": { months: [], storedBytes: 0 } });
+    render(<Usage />);
+
+    expect(await screen.findByText("No traffic yet.")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
   it("leaves the costs empty, not zero, when no prices were configured", async () => {
     mockApi({ "GET /api/me/usage": { months: [MONTH], storedBytes: 0 } });
     render(<Usage />);
