@@ -21,6 +21,9 @@ export interface Item {
   position: number;
   tags: string[];
   shared: boolean;
+  // For everybody, without a login: only the curator publishes, only links, and a
+  // published item is also shared. Absent on the items written before it existed.
+  published?: boolean;
   createdAt: string;
   updatedAt: string;
 }

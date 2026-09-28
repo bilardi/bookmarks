@@ -52,3 +52,6 @@ export const INVITE_SK = "INVITE";
 export function invitePk(email: string): string {
   return `INVITE#${email.toLowerCase()}`;
 }
+
+// The partition of gsi3: every published item, whoever published it.
+export const PUBLIC_PK = "PUBLIC";

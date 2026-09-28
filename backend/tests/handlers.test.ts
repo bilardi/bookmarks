@@ -6,6 +6,7 @@ import { makeItems } from "../src/handlers/items";
 import { makeFiles } from "../src/handlers/files";
 import { views } from "../src/handlers/views";
 import { fileEvents } from "../src/handlers/fileEvents";
+import { publicItems } from "../src/handlers/public";
 import { getItem } from "../src/repository/items";
 import { wipeUsers } from "./helpers";
 import { fakeStorage } from "./fakeStorage";
@@ -121,5 +122,14 @@ describe("file events handler", () => {
     const key = `files/${SUB}/${created.id}`;
     await fileEvents({ Records: [{ s3: { object: { key: encodeURIComponent(key), size: 42 } } }] } as unknown as S3Event);
     expect((await getItem(SUB, created.id))?.file?.status).toBe("ready");
+  });
+});
+
+describe("public handler", () => {
+  it("answers without a token, and lets CloudFront keep the answer five minutes", async () => {
+    const res = await publicItems({ routeKey: "GET /public/items", headers: {} } as unknown as Parameters<typeof publicItems>[0]);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers?.["cache-control"]).toBe("public, max-age=300");
+    expect(Array.isArray(JSON.parse(String(res.body)))).toBe(true);
   });
 });

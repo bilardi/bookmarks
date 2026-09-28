@@ -7,10 +7,13 @@ import type { Caller } from "../http";
 
 // The curator is whoever deployed, named by email: nothing in the pages can make
 // somebody else one.
+export function isCurator(caller: Caller, curatorEmail: string): boolean {
+  return curatorEmail !== "" && caller.email === curatorEmail.toLowerCase();
+}
+
 export async function getMe(caller: Caller, curatorEmail: string): Promise<MeView> {
   await registerProfile(caller);
-  const curator = curatorEmail !== "" && caller.email === curatorEmail.toLowerCase();
-  return { userId: caller.userId, name: caller.name, email: caller.email, curator };
+  return { userId: caller.userId, name: caller.name, email: caller.email, curator: isCurator(caller, curatorEmail) };
 }
 
 // Bytes always, costs only when the deploy configured the prices.

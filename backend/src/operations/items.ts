@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { between, canRead, filterByTags, nextPosition, tooClose } from "@bookmarks/core";
+import { between, canRead, filterByTags, nextPosition, tagConnections, tooClose } from "@bookmarks/core";
 import type { CreateItemBody, Item, ItemView, MoveBody, PatchItemBody, TagView } from "@bookmarks/core";
 
 import {
@@ -8,6 +8,7 @@ import {
   itemsByIds,
   lastPositionIn,
   listFolderItems,
+  listOwnerItems,
   neighbor,
   renumberFolder,
   saveItemChange,
@@ -21,7 +22,8 @@ import { EMPTY_VIEW, toItemView, withViews } from "./views";
 import type { Caller } from "../http";
 import type { Storage } from "../storage";
 
-export async function createItem(caller: Caller, body: CreateItemBody): Promise<Result<ItemView>> {
+export async function createItem(caller: Caller, body: CreateItemBody, curator = false): Promise<Result<ItemView>> {
+  if (body.published && !curator) return fail("forbidden");
   const id = randomUUID();
   const now = new Date().toISOString();
   const item: Item = {
@@ -40,7 +42,8 @@ export async function createItem(caller: Caller, body: CreateItemBody): Promise<
     path: body.path,
     position: nextPosition(await lastPositionIn(caller.userId, body.path)),
     tags: body.tags,
-    shared: body.shared,
+    shared: body.shared || body.published,
+    published: body.published,
     createdAt: now,
     updatedAt: now,
   };
@@ -50,11 +53,22 @@ export async function createItem(caller: Caller, body: CreateItemBody): Promise<
 
 // Writes address the caller's own items only: the item of somebody else is simply
 // not there, which also says nothing about whether it exists.
-export async function updateItem(caller: Caller, id: string, body: PatchItemBody): Promise<Result<ItemView>> {
+export async function updateItem(
+  caller: Caller,
+  id: string,
+  body: PatchItemBody,
+  curator = false,
+): Promise<Result<ItemView>> {
   const before = await getItem(caller.userId, id);
   if (!before) return fail("not-found");
   const link = body.link === undefined ? before.link : (body.link ?? undefined);
   if (link && before.file) return fail("link-and-file");
+  if (body.published === true && !curator) return fail("forbidden");
+  // Public means shared: publishing shares, and unsharing takes it off the public page.
+  let published = body.published ?? before.published === true;
+  if (body.shared === false) published = false;
+  if (published && !link) return fail("public-needs-link");
+  const shared = published || (body.shared ?? before.shared);
   const path = body.path ?? before.path;
   const after: Item = {
     ...before,
@@ -64,7 +78,8 @@ export async function updateItem(caller: Caller, id: string, body: PatchItemBody
     path,
     position: path === before.path ? before.position : nextPosition(await lastPositionIn(caller.userId, path)),
     tags: body.tags ?? before.tags,
-    shared: body.shared ?? before.shared,
+    shared,
+    published,
     updatedAt: new Date().toISOString(),
   };
   await saveItemChange(before, after);
@@ -136,8 +151,15 @@ export async function filterItems(caller: Caller, owner: string, tags: string[])
 // they can see.
 export async function listTags(caller: Caller, owner: string): Promise<Result<TagView[]>> {
   const own = owner === caller.userId;
+  // The tone of a tag comes from everything the caller can read of this owner, not
+  // from a filter: it stays the same while the bar narrows.
+  const readable = (await listOwnerItems(owner)).filter((item) => canRead(item, caller.userId));
+  const connections = tagConnections(readable);
   const tags = (await listTagRecords(owner))
     .filter((tag) => (own ? tag.itemCount > 0 : tag.sharedCount > 0))
-    .map((tag) => (own ? tag : { ...tag, itemCount: tag.sharedCount }));
+    .map((tag) => ({
+      ...(own ? tag : { ...tag, itemCount: tag.sharedCount }),
+      connections: connections.get(tag.name) ?? 1,
+    }));
   return ok(tags);
 }

@@ -7,6 +7,7 @@ export type ErrorCode =
   | "not-adjacent"
   | "invalid-target"
   | "link-and-file"
+  | "public-needs-link"
   | "no-file"
   | "root-folder"
   | "forbidden"
@@ -31,6 +32,7 @@ export const STATUS: Record<ErrorCode, number> = {
   "not-adjacent": 400,
   "invalid-target": 400,
   "link-and-file": 400,
+  "public-needs-link": 400,
   "no-file": 400,
   "root-folder": 400,
   forbidden: 403,

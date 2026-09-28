@@ -9,6 +9,7 @@ export function item(overrides: Partial<ItemView> = {}): ItemView {
     position: 1,
     tags: [],
     shared: false,
+    published: false,
     createdAt: "2026-09-27T00:00:00.000Z",
     updatedAt: "2026-09-27T00:00:00.000Z",
     view: { seen: false, flag: false, note: "" },

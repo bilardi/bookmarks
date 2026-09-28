@@ -46,8 +46,10 @@ export const createItemBodySchema = z
     path: pathSchema.default(""),
     tags: tagsSchema.default([]),
     shared: z.boolean().default(false),
+    published: z.boolean().default(false),
   })
-  .refine((body) => !(body.link && body.file), { message: "link-and-file" });
+  .refine((body) => !(body.link && body.file), { message: "link-and-file" })
+  .refine((body) => !body.published || body.link !== undefined, { message: "public-needs-link" });
 export type CreateItemBody = z.infer<typeof createItemBodySchema>;
 
 // null removes the text or the link; a file is set only at creation.
@@ -59,6 +61,7 @@ export const patchItemBodySchema = z
     path: pathSchema.optional(),
     tags: tagsSchema.optional(),
     shared: z.boolean().optional(),
+    published: z.boolean().optional(),
   })
   .refine((body) => Object.values(body).some((value) => value !== undefined), {
     message: "empty-patch",
@@ -110,6 +113,7 @@ export interface ItemView {
   position: number;
   tags: string[];
   shared: boolean;
+  published: boolean;
   createdAt: string;
   updatedAt: string;
   view: ViewState;
@@ -125,6 +129,17 @@ export interface TagView {
   name: string;
   itemCount: number;
   sharedCount: number;
+  // How many different tags appear with this one over what the caller can read.
+  connections: number;
+}
+
+// What a visitor without a login gets of a published item, and nothing more: the
+// text stays with the owner and the invited.
+export interface PublicItemView {
+  id: string;
+  title: string;
+  link: string;
+  tags: string[];
 }
 
 export interface OwnerView {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { filterByTags, normalizeTag } from "../src/tags";
+import { byConnections, filterByTags, normalizeTag, tagConnections, tagTone } from "../src/tags";
 
 const L1 = { id: "l1", tags: ["lessons", "english"] };
 const L2 = { id: "l2", tags: ["lessons", "spanish"] };
@@ -26,5 +26,30 @@ describe("filterByTags", () => {
 
   it("offers every tag when nothing is selected", () => {
     expect(filterByTags([L1, L2, B], []).available).toEqual(["aws", "english", "lessons", "spanish"]);
+  });
+});
+
+describe("tagConnections", () => {
+  it("counts the different tags each tag appears with, itself included", () => {
+    const connections = tagConnections([
+      { tags: ["lessons", "english", "grammar"] },
+      { tags: ["lessons", "spanish"] },
+      { tags: ["alone"] },
+    ]);
+    expect(Object.fromEntries(connections)).toEqual({ lessons: 4, english: 3, grammar: 3, spanish: 2, alone: 1 });
+  });
+});
+
+describe("tagTone", () => {
+  it("goes from 1, a tag alone, to 5, a tag with four or more others", () => {
+    expect([1, 2, 3, 4, 5, 16].map(tagTone)).toEqual([1, 2, 3, 4, 5, 5]);
+    expect(tagTone(0)).toBe(1);
+  });
+});
+
+describe("byConnections", () => {
+  it("puts the most connected first, and orders the equals by name", () => {
+    const connections = new Map([["b", 3], ["a", 3], ["c", 5], ["d", 1]]);
+    expect(byConnections(["d", "b", "a", "c"], connections)).toEqual(["c", "a", "b", "d"]);
   });
 });

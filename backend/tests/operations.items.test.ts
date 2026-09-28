@@ -148,7 +148,7 @@ describe("filterItems and listTags", () => {
     const a = await add("a", { tags: ["x", "y"] });
     await updateItem(A, a.id, { tags: ["x"] });
     const res = await listTags(A, A.userId);
-    expect(res.ok && res.view).toEqual([{ name: "x", itemCount: 1, sharedCount: 0 }]);
+    expect(res.ok && res.view).toEqual([{ name: "x", itemCount: 1, sharedCount: 0, connections: 1 }]);
   });
 });
 

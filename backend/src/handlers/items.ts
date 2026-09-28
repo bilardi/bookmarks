@@ -13,7 +13,7 @@ import { callerOf, json, queryOf, readBody, type ApiEvent, type JsonResult } fro
 import { ok, respond } from "../result";
 import { createFolder, deleteFolder, listFoldersOf, renameFolder, shareFolder } from "../operations/folders";
 import { createItem, deleteItem, filterItems, listFolder, listTags, moveItem, updateItem } from "../operations/items";
-import { getMe, getUsage, listOwnersFor } from "../operations/me";
+import { getMe, getUsage, isCurator, listOwnersFor } from "../operations/me";
 import { pricesFromEnv } from "../prices";
 import type { Storage } from "../storage";
 
@@ -34,6 +34,7 @@ function tagsQuery(event: ApiEvent): string[] | null {
 export function makeItems(storage: Storage) {
   return async function items(event: ApiEvent): Promise<JsonResult> {
     const caller = callerOf(event);
+    const curator = isCurator(caller, process.env.CURATOR_EMAIL ?? "");
     const owner = queryOf(event, "owner") ?? caller.userId;
     const id = event.pathParameters?.id ?? "";
 
@@ -77,11 +78,11 @@ export function makeItems(storage: Storage) {
       }
       case "POST /items": {
         const parsed = createItemBodySchema.safeParse(readBody(event));
-        return parsed.success ? respond(await createItem(caller, parsed.data)) : INVALID;
+        return parsed.success ? respond(await createItem(caller, parsed.data, curator)) : INVALID;
       }
       case "PATCH /items/{id}": {
         const parsed = patchItemBodySchema.safeParse(readBody(event));
-        return parsed.success ? respond(await updateItem(caller, id, parsed.data)) : INVALID;
+        return parsed.success ? respond(await updateItem(caller, id, parsed.data, curator)) : INVALID;
       }
       case "DELETE /items/{id}":
         return respond(await deleteItem(caller, id, storage));

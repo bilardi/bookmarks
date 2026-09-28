@@ -32,6 +32,7 @@ describe("ItemForm", () => {
       path: "lessons",
       tags: ["grammar", "verbs"],
       shared: false,
+      published: false,
     });
   });
 

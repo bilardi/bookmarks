@@ -60,7 +60,11 @@ export async function shareFolder(caller: Caller, path: string, shared: boolean)
   const now = new Date().toISOString();
   for (const folder of folders) {
     for (const item of await listFolderItems(owner, folder.path)) {
-      if (item.shared !== shared) await saveItemChange(item, { ...item, shared, updatedAt: now });
+      // Unsharing a folder takes its items off the public page too.
+      const next = shared ? { shared } : { shared, published: false };
+      if (item.shared !== shared || (!shared && item.published)) {
+        await saveItemChange(item, { ...item, ...next, updatedAt: now });
+      }
     }
   }
   return ok((await getFolder(owner, path)) as FolderView);

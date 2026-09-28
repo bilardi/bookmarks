@@ -1,6 +1,6 @@
 import { build } from "esbuild";
 
-const functions = ["items", "files", "views", "file-events", "pre-signup"] as const;
+const functions = ["items", "files", "views", "file-events", "pre-signup", "public"] as const;
 
 // Bundle each Lambda entry into its own CJS file. The clients and lib-dynamodb are
 // provided by the nodejs22.x runtime, so they stay external; the two presigners

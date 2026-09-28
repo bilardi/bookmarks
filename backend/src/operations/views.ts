@@ -26,6 +26,7 @@ export function toItemView(item: Item, view: ViewState): ItemView {
     position: item.position,
     tags: item.tags,
     shared: item.shared,
+    published: item.published === true,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     view,

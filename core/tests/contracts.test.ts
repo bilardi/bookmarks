@@ -19,7 +19,13 @@ describe("createItemBodySchema", () => {
       path: "lessons/english",
       tags: ["lessons", "english"],
       shared: false,
+      published: false,
     });
+  });
+
+  it("publishes only a link", () => {
+    expect(createItemBodySchema.safeParse({ title: "t", published: true }).success).toBe(false);
+    expect(createItemBodySchema.safeParse({ title: "t", published: true, link: "https://example.com/" }).success).toBe(true);
   });
 
   it("puts an item without a path in the root", () => {

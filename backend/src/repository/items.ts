@@ -5,24 +5,26 @@ import type { Item } from "@bookmarks/core";
 
 import { counterDeltas, sharedDelta, type CounterDelta } from "../counters";
 import { batchGet, doc, queryAll, TABLE_NAME } from "../dynamo";
-import { FOLDER_PREFIX, itemSk, pathGsiPk, PROFILE_SK, tagMemberPk, userPk } from "../keys";
+import { FOLDER_PREFIX, itemSk, pathGsiPk, PROFILE_SK, PUBLIC_PK, tagMemberPk, userPk } from "../keys";
 import { syncOwnerIndex } from "./profiles";
 
 type TransactItem = NonNullable<TransactWriteCommandInput["TransactItems"]>[number];
 
-// gsi1 holds the folder and the position, so a folder comes back already in order.
+// gsi1 holds the folder and the position, so a folder comes back already in order;
+// gsi3 holds only the published items.
 function itemRecord(item: Item): Record<string, unknown> {
   return {
     pk: userPk(item.owner),
     sk: itemSk(item.id),
     gsi1pk: pathGsiPk(item.owner, item.path),
     gsi1sk: item.position,
+    ...(item.published ? { gsi3pk: PUBLIC_PK, gsi3sk: itemSk(item.id) } : {}),
     ...item,
   };
 }
 
 export function itemFrom(record: Record<string, unknown>): Item {
-  const { pk: _pk, sk: _sk, gsi1pk: _gsi1pk, gsi1sk: _gsi1sk, ...item } = record;
+  const { pk: _pk, sk: _sk, gsi1pk: _gsi1pk, gsi1sk: _gsi1sk, gsi3pk: _gsi3pk, gsi3sk: _gsi3sk, ...item } = record;
   return item as unknown as Item;
 }
 
@@ -143,6 +145,27 @@ export async function listFolderItems(owner: string, path: string): Promise<Item
     IndexName: "gsi1",
     KeyConditionExpression: "gsi1pk = :pk",
     ExpressionAttributeValues: { ":pk": pathGsiPk(owner, path) },
+  });
+  return records.map(itemFrom);
+}
+
+// gsi3 is sparse: only a published item carries its key, so the public page reads
+// the published items and nothing else, without knowing whose they are.
+export async function listPublished(): Promise<Item[]> {
+  const records = await queryAll({
+    TableName: TABLE_NAME,
+    IndexName: "gsi3",
+    KeyConditionExpression: "gsi3pk = :public",
+    ExpressionAttributeValues: { ":public": PUBLIC_PK },
+  });
+  return records.map(itemFrom);
+}
+
+export async function listOwnerItems(owner: string): Promise<Item[]> {
+  const records = await queryAll({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: "pk = :pk AND begins_with(sk, :item)",
+    ExpressionAttributeValues: { ":pk": userPk(owner), ":item": itemSk("") },
   });
   return records.map(itemFrom);
 }

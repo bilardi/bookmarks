@@ -10,7 +10,7 @@ export {
 export { normalizeName } from "./names";
 export { ancestors, isDirectChild, isInside, normalizePath, rebase } from "./paths";
 export { between, nextPosition, POSITION_GAP_MIN, tooClose } from "./positions";
-export { filterByTags, normalizeTag } from "./tags";
+export { byConnections, filterByTags, normalizeTag, TAG_TONES, tagConnections, tagTone } from "./tags";
 export type { TagFilterResult } from "./tags";
 export { kindOf } from "./types";
 export type { FileStatus, Item, ItemKind, StoredFile } from "./types";
@@ -38,6 +38,7 @@ export type {
   MoveBody,
   OwnerView,
   PatchItemBody,
+  PublicItemView,
   RenameFolderBody,
   ShareFolderBody,
   TagView,
