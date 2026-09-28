@@ -7,6 +7,7 @@ import { filterItems, listFolders, listItems, listTags, messageOf } from "../api
 import { Breadcrumb } from "../components/Breadcrumb";
 import { FolderList } from "../components/FolderList";
 import { ItemRow } from "../components/ItemRow";
+import { NewItem } from "../components/NewItem";
 import { Link } from "../components/Link";
 import { TagBar } from "../components/TagBar";
 import { bookmarksPath } from "../router";
@@ -95,6 +96,7 @@ export function Bookmarks({ owner, ownerName, path, tags }: Props) {
           );
         })}
       </ul>
+      {own && !filtered && <NewItem path={path} onChange={reload} />}
     </section>
   );
 }

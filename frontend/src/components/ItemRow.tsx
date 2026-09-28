@@ -4,6 +4,7 @@ import type { ItemView, ViewState } from "@bookmarks/core";
 
 import { messageOf, moveItem, putView } from "../api";
 import { IconButton } from "./Icon";
+import { ItemForm } from "./ItemForm";
 import { NoteForm } from "./NoteForm";
 import { Viewer } from "./Viewer";
 
@@ -131,6 +132,17 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, onCh
           onSaved={(next) => {
             setView(next);
             setPanel("none");
+          }}
+          onClose={() => setPanel("none")}
+        />
+      )}
+      {panel === "edit" && own && (
+        <ItemForm
+          item={item}
+          path={item.path}
+          onSaved={() => {
+            setPanel("none");
+            onChange();
           }}
           onClose={() => setPanel("none")}
         />
