@@ -5,7 +5,7 @@ import { ActionButton } from "./ActionButton";
 import { ItemForm } from "./ItemForm";
 
 // Under an own folder: a new item in this folder, or a new folder inside it.
-export function NewItem({ path, onChange }: { path: string; onChange: () => void }) {
+export function NewItem({ path, curator = false, onChange }: { path: string; curator?: boolean; onChange: () => void }) {
   const [open, setOpen] = useState(false);
   const close = (): void => {
     setOpen(false);
@@ -14,7 +14,7 @@ export function NewItem({ path, onChange }: { path: string; onChange: () => void
   return (
     <div className="new">
       {open ? (
-        <ItemForm path={path} onSaved={close} onClose={close} />
+        <ItemForm path={path} curator={curator} onSaved={close} onClose={close} />
       ) : (
         <div className="row">
           <button type="button" aria-label="Add an item" onClick={() => setOpen(true)}>

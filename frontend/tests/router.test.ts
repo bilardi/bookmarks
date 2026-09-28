@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bookmarksPath, parseRoute } from "../src/router";
+import { bookmarksPath, parseRoute, PATHS, publicPath } from "../src/router";
 
 describe("parseRoute", () => {
   it("reads the own bookmarks, their folders and the tags of the filter", () => {
@@ -36,5 +36,14 @@ describe("bookmarksPath", () => {
     expect(bookmarksPath(undefined, "lessons/english")).toBe("/my/lessons/english");
     expect(bookmarksPath("o1", "")).toBe("/shared/o1");
     expect(bookmarksPath("o1", "lessons", ["grammar", "verbs"])).toBe("/shared/o1/lessons?tags=grammar,verbs");
+  });
+});
+
+describe("the public page", () => {
+  it("has an address of its own, with the tags of the filter", () => {
+    expect(parseRoute("/public")).toEqual({ name: "public", tags: [] });
+    expect(parseRoute("/public", "?tags=aws,linux")).toEqual({ name: "public", tags: ["aws", "linux"] });
+    expect(publicPath(["aws"])).toBe("/public?tags=aws");
+    expect(PATHS.afterLogout).toBe("/public");
   });
 });

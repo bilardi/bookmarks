@@ -1,5 +1,6 @@
 import { UserManager, WebStorageStateStore } from "oidc-client-ts";
 
+import { PATHS } from "../router";
 import type { CurrentUser } from "./dev";
 
 // The tokens live in sessionStorage, the refresh one included, and they all die
@@ -10,8 +11,8 @@ const manager = new UserManager({
   // Empty in a build that is not the Cognito one, where nothing here is called.
   authority: import.meta.env.VITE_COGNITO_ISSUER ?? "",
   client_id: import.meta.env.VITE_COGNITO_CLIENT_ID ?? "",
-  redirect_uri: window.location.origin,
-  post_logout_redirect_uri: window.location.origin,
+  redirect_uri: `${window.location.origin}${PATHS.afterLogin}`,
+  post_logout_redirect_uri: `${window.location.origin}${PATHS.afterLogout}`,
   response_type: "code",
   scope: "openid email profile",
   userStore: new WebStorageStateStore({ store: window.sessionStorage }),
@@ -103,6 +104,9 @@ export function authHeaders(): Record<string, string> {
 }
 
 export function login(): void {
+  // Leaving lands on the public page, and the flag it leaves behind would turn
+  // this explicit login into the screen of the way out.
+  window.sessionStorage.removeItem(LEAVING);
   void manager.signinRedirect();
 }
 
@@ -119,6 +123,6 @@ async function leave(): Promise<void> {
   if (endpoint === undefined) return;
   const url = new URL(endpoint);
   url.searchParams.set("client_id", import.meta.env.VITE_COGNITO_CLIENT_ID ?? "");
-  url.searchParams.set("logout_uri", window.location.origin);
+  url.searchParams.set("logout_uri", `${window.location.origin}${PATHS.afterLogout}`);
   window.location.assign(url.toString());
 }

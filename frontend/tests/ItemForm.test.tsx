@@ -36,6 +36,25 @@ describe("ItemForm", () => {
     });
   });
 
+  it("lets the curator publish a link, which is then shared too", async () => {
+    const calls = mockApi({ "GET /api/folders": [], "GET /api/tags": [], "POST /api/items": item() });
+    render(<ItemForm path="" curator onSaved={() => undefined} onClose={() => undefined} />);
+
+    fill("Title", "Docs");
+    fill("Web address", "https://example.com/");
+    fireEvent.click(screen.getByLabelText("Public, for everybody without a login"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ published: true, shared: true });
+  });
+
+  it("offers the publication only to the curator", () => {
+    mockApi({ "GET /api/folders": [], "GET /api/tags": [] });
+    render(<ItemForm path="" onSaved={() => undefined} onClose={() => undefined} />);
+    expect(screen.queryByLabelText("Public, for everybody without a login")).toBeNull();
+  });
+
   it("refuses a link that is not a web address, before calling the API", async () => {
     const calls = mockApi({ "GET /api/folders": [], "GET /api/tags": [] });
     render(<ItemForm path="" onSaved={() => undefined} onClose={() => undefined} />);

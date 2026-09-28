@@ -12,6 +12,8 @@ interface Props {
   item?: ItemView;
   // The folder the form starts in: the current one.
   path: string;
+  // Only the curator publishes: the others do not see the choice.
+  curator?: boolean;
   onSaved: () => void;
   onClose: () => void;
 }
@@ -30,6 +32,7 @@ export function problemOf(error: { issues: Issue[] }): string {
   const field = String(issue?.path[0] ?? "");
   if (issue?.message === "invalid-path") return "Folder names use lowercase letters, digits, - and _";
   if (issue?.message === "invalid-tag") return "Tags use lowercase letters, digits, - and _";
+  if (issue?.message === "public-needs-link") return "Only a link can be public";
   if (field === "title") return `The title is required, at most ${TITLE_MAX} characters`;
   if (field === "link") return "The link must start with http:// or https://";
   if (field === "tags") return `At most ${TAGS_MAX} tags`;
@@ -43,7 +46,7 @@ function kindOfItem(item: ItemView | undefined): Kind {
   return item === undefined ? "link" : "note";
 }
 
-export function ItemForm({ item, path, onSaved, onClose }: Props) {
+export function ItemForm({ item, path, curator = false, onSaved, onClose }: Props) {
   const id = useId();
   const editing = item !== undefined;
   const [title, setTitle] = useState(item?.title ?? "");
@@ -54,6 +57,7 @@ export function ItemForm({ item, path, onSaved, onClose }: Props) {
   const [folder, setFolder] = useState(item?.path ?? path);
   const [tags, setTags] = useState((item?.tags ?? []).join(", "));
   const [shared, setShared] = useState(item?.shared ?? false);
+  const [published, setPublished] = useState(item?.published ?? false);
   const [paths, setPaths] = useState<string[]>([]);
   const [knownTags, setKnownTags] = useState<string[]>([]);
 
@@ -76,7 +80,9 @@ export function ItemForm({ item, path, onSaved, onClose }: Props) {
         link: item.file === undefined ? (link === "" ? null : link) : undefined,
         path: folder,
         tags: tagList,
-        shared,
+        // Public means shared, as the backend says too.
+        shared: shared || published,
+        published: curator ? published : undefined,
       });
       if (!parsed.success) throw new Error(problemOf(parsed.error));
       await patchItem(item.id, parsed.data);
@@ -84,6 +90,7 @@ export function ItemForm({ item, path, onSaved, onClose }: Props) {
       return;
     }
     if (kind === "file" && file === null) throw new Error("Choose the file to upload");
+    const publishing = curator && kind === "link" && published;
     const parsed = createItemBodySchema.safeParse({
       title,
       text: text === "" ? undefined : text,
@@ -91,7 +98,8 @@ export function ItemForm({ item, path, onSaved, onClose }: Props) {
       file: kind === "file" && file !== null ? { name: file.name, contentType: file.type || "application/octet-stream" } : undefined,
       path: folder,
       tags: tagList,
-      shared,
+      shared: shared || publishing,
+      published: publishing,
     });
     if (!parsed.success) throw new Error(problemOf(parsed.error));
     const created = await createItem(parsed.data);
@@ -172,9 +180,25 @@ export function ItemForm({ item, path, onSaved, onClose }: Props) {
       )}
 
       <label>
-        <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={shared || published}
+          disabled={published}
+          onChange={(e) => setShared(e.target.checked)}
+        />
         Shared with every invited person
       </label>
+      {curator && (
+        <label>
+          <input
+            type="checkbox"
+            checked={published}
+            disabled={kind !== "link"}
+            onChange={(e) => setPublished(e.target.checked)}
+          />
+          Public, for everybody without a login
+        </label>
+      )}
 
       <div className="row">
         <ActionButton label="Save" onAction={save} />

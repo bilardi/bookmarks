@@ -17,6 +17,8 @@ interface Props {
   ownerName: string;
   path: string;
   tags: string[];
+  // Only the curator publishes, and the form offers it only to them.
+  curator?: boolean;
 }
 
 interface Contents {
@@ -34,7 +36,7 @@ export function neighbors(items: ItemView[], index: number): { up?: string; down
   return { up, down };
 }
 
-export function Bookmarks({ owner, ownerName, path, tags }: Props) {
+export function Bookmarks({ owner, ownerName, path, tags, curator = false }: Props) {
   const own = owner === undefined;
   const filtered = tags.length > 0;
   const [contents, setContents] = useState<Contents | null>(null);
@@ -70,7 +72,12 @@ export function Bookmarks({ owner, ownerName, path, tags }: Props) {
   return (
     <section>
       <Breadcrumb owner={owner} ownerName={ownerName} path={path} />
-      <TagBar owner={owner} path={path} selected={tags} available={available} />
+      <TagBar
+        selected={tags}
+        available={available}
+        connections={new Map(contents.tags.map((t) => [t.name, t.connections]))}
+        pathOf={(selected) => bookmarksPath(owner, path, selected)}
+      />
       {filtered && (
         <p className="muted">
           {"Items with every selected tag. "}
@@ -91,12 +98,13 @@ export function Bookmarks({ owner, ownerName, path, tags }: Props) {
               down={down}
               hiddenTags={tags}
               showPath={filtered}
+              curator={curator}
               onChange={reload}
             />
           );
         })}
       </ul>
-      {own && !filtered && <NewItem path={path} onChange={reload} />}
+      {own && !filtered && <NewItem path={path} curator={curator} onChange={reload} />}
     </section>
   );
 }

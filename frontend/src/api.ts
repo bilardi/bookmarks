@@ -7,6 +7,7 @@ import type {
   MoveBody,
   OwnerView,
   PatchItemBody,
+  PublicItemView,
   TagView,
   UploadView,
   UsageView,
@@ -27,6 +28,7 @@ const REASONS: Record<string, string> = {
   "not-adjacent": "An item moves only past its neighbor in the same folder",
   "invalid-target": "A folder cannot move inside itself",
   "link-and-file": "An item carries a link or a file, not both",
+  "public-needs-link": "Only a link can be public",
   "no-file": "This item has no file",
   "root-folder": "The root folder cannot be changed",
   "folder-exists": "A folder with that name is already there",
@@ -91,6 +93,11 @@ function query(params: Record<string, string | undefined>): string {
 
 function send(method: string, body: unknown): RequestInit {
   return { method, body: JSON.stringify(body) };
+}
+
+// The one call without a login: the links the curator published.
+export function listPublic(): Promise<PublicItemView[]> {
+  return request<PublicItemView[]>("/public/items");
 }
 
 export function getMe(): Promise<MeView> {

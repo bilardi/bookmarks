@@ -188,9 +188,46 @@ button.title {
   margin: 0.5rem 0;
 }
 
+a.tag {
+  text-decoration: none;
+}
+
+/* The tones of bookmarks-v3.0, the colors of Bootstrap 3: how many tags a tag
+   appears with, from alone (1) to four or more others (5). */
+.tag.tone-1 {
+  background: #ffffff;
+  border-color: #cccccc;
+  color: #333333;
+}
+
+.tag.tone-2 {
+  background: #337ab7;
+  border-color: #2e6da4;
+  color: #ffffff;
+}
+
+.tag.tone-3 {
+  background: #5cb85c;
+  border-color: #4cae4c;
+  color: #ffffff;
+}
+
+.tag.tone-4 {
+  background: #5bc0de;
+  border-color: #46b8da;
+  color: #ffffff;
+}
+
+.tag.tone-5 {
+  background: #f0ad4e;
+  border-color: #eea236;
+  color: #ffffff;
+}
+
 .tag.selected {
-  color: var(--text);
-  border-color: var(--text);
+  background: #d9534f;
+  border-color: #d43f3a;
+  color: #ffffff;
 }
 
 .panel {

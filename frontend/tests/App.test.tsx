@@ -22,4 +22,14 @@ describe("App", () => {
 
     expect(await screen.findByText(/The curator of this site can read the bookmarks of everybody/)).toBeTruthy();
   });
+
+  it("shows the public bookmarks without starting a login", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+    window.history.replaceState({}, "", "/public");
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "Log in" })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Sections" })).toBeNull();
+    window.history.replaceState({}, "", "/");
+  });
 });

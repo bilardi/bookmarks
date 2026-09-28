@@ -20,6 +20,7 @@ interface Props {
   hiddenTags: string[];
   // With a tag filter the list mixes folders, and each row says its own.
   showPath: boolean;
+  curator?: boolean;
   onChange: () => void;
 }
 
@@ -27,7 +28,7 @@ type Panel = "none" | "text" | "open" | "edit";
 
 // One row, the same structure everywhere up to the title: arrows, eye, flag, text,
 // pencil, then the title and the tags.
-export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, onChange }: Props) {
+export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, curator = false, onChange }: Props) {
   const [view, setView] = useState<ViewState>(item.view);
   const [panel, setPanel] = useState<Panel>("none");
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, onCh
         <ItemForm
           item={item}
           path={item.path}
+          curator={curator}
           onSaved={() => {
             setPanel("none");
             onChange();

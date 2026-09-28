@@ -5,8 +5,9 @@ import type { MeView, OwnerView } from "@bookmarks/core";
 import { getMe, listOwners } from "./api";
 import { Link } from "./components/Link";
 import { currentUser, hasSession, isCognito, login, logout, refusal, startSession } from "./auth";
-import { useRoute } from "./router";
+import { PATHS, useRoute } from "./router";
 import { Bookmarks } from "./pages/Bookmarks";
+import { PublicBookmarks } from "./pages/PublicBookmarks";
 import { Shared } from "./pages/Shared";
 import { Usage } from "./pages/Usage";
 
@@ -18,15 +19,18 @@ export function App() {
   const [me, setMe] = useState<MeView | null>(null);
   const [owners, setOwners] = useState<OwnerView[]>([]);
 
+  // The public page needs no session: starting one there would send a visitor to
+  // the login, and a person just signed out straight back into it.
+  const isPublic = route.name === "public";
   useEffect(() => {
-    if (!isCognito) return;
+    if (!isCognito || isPublic) return;
     startSession()
       .then(() => setSession(refusal() !== null ? "refused" : hasSession() ? "in" : "out"))
       .catch((e: unknown) => {
         console.error("signing in failed", e);
         setSession("failed");
       });
-  }, []);
+  }, [isPublic]);
 
   // GET /me is also what creates the profile of a person at the first access.
   useEffect(() => {
@@ -44,6 +48,8 @@ export function App() {
       .then(setOwners)
       .catch(() => undefined);
   }, [session, owner]);
+
+  if (route.name === "public") return <PublicBookmarks tags={route.tags} />;
 
   if (session === "failed")
     return (
@@ -90,9 +96,9 @@ export function App() {
       <header className="app">
         <strong>Bookmarks</strong>
         <nav aria-label="Sections">
-          <Link to="/">My bookmarks</Link>
-          <Link to="/shared">Shared</Link>
-          <Link to="/usage">Usage</Link>
+          <Link to={PATHS.mine}>My bookmarks</Link>
+          <Link to={PATHS.shared}>Shared</Link>
+          <Link to={PATHS.usage}>Usage</Link>
         </nav>
         <span className="right">
           <span>{me?.name ?? currentUser().name}</span>
@@ -111,6 +117,7 @@ export function App() {
             ownerName={route.owner === undefined ? "My bookmarks" : ownerName}
             path={route.path}
             tags={route.tags}
+            curator={me?.curator === true}
           />
         )}
         {route.name === "shared" && <Shared />}
