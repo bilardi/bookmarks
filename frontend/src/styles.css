@@ -129,8 +129,7 @@ th.num {
   font-variant-numeric: tabular-nums;
 }
 
-/* One size for every icon, and the same for the space of a missing one, so the
-   columns of the rows line up up to the title. */
+/* One size for every icon, so the columns of the rows line up up to the title. */
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -160,11 +159,6 @@ th.num {
 
 .icon-button.flagged svg {
   fill: currentColor;
-}
-
-.icon-space {
-  display: inline-block;
-  width: 26px;
 }
 
 ul.items,

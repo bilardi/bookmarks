@@ -83,11 +83,15 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, onCh
           className={view.flag ? "flagged" : undefined}
           onClick={() => void saveView({ ...view, flag: !view.flag })}
         />
-        {readable ? (
-          <IconButton icon="text" label="Text" pressed={panel === "text"} onClick={() => toggle("text")} />
-        ) : (
-          <span className="icon-space" />
-        )}
+        {/* Always in its place, off when there is nothing to read, like the arrows at
+            the edge of a folder: every row keeps the same columns. */}
+        <IconButton
+          icon="text"
+          label="Text"
+          pressed={panel === "text"}
+          disabled={!readable}
+          onClick={() => toggle("text")}
+        />
         <IconButton icon="pencil" label={own ? "Edit" : "Edit your note"} pressed={panel === "edit"} onClick={() => toggle("edit")} />
         {item.link !== undefined ? (
           <a className="title" href={item.link} target="_blank" rel="noopener noreferrer">

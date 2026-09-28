@@ -53,9 +53,9 @@ describe("ItemRow", () => {
     expect(screen.getByRole("button", { name: "Flag" }).getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("shows the text icon only when there is something to read", () => {
+  it("keeps the text icon in its place, and turns it off when there is nothing to read", () => {
     const { unmount } = row();
-    expect(screen.queryByRole("button", { name: "Text" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Text" })).toHaveProperty("disabled", true);
     unmount();
     row({ item: item({ text: "read this" }) });
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
