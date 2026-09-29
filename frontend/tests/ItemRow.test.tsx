@@ -12,12 +12,19 @@ afterEach(() => {
 function row(props: Partial<Parameters<typeof ItemRow>[0]> = {}) {
   return render(
     <ul>
-      <ItemRow item={item()} own hiddenTags={[]} showPath={false} onChange={() => undefined} {...props} />
+      <ItemRow item={item()} own showPath={false} editing onChange={() => undefined} {...props} />
     </ul>,
   );
 }
 
 describe("ItemRow", () => {
+  it("hides the arrows and the pencil until the page is being edited", () => {
+    row({ up: "i0", editing: false });
+    expect(screen.queryByRole("button", { name: "Move up" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Not seen" })).toBeTruthy();
+  });
+
   it("offers arrows and the full pencil on own items", () => {
     row({ up: "i0" });
     expect(screen.getByRole("button", { name: "Move up" })).toHaveProperty("disabled", false);
@@ -79,10 +86,9 @@ describe("ItemRow", () => {
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
   });
 
-  it("shows the tags not already selected, and the folder when the list mixes folders", () => {
-    row({ item: item({ path: "lessons", tags: ["lessons", "grammar"] }), hiddenTags: ["lessons"], showPath: true });
-    expect(screen.getByText("grammar")).toBeTruthy();
-    expect(screen.queryByText("lessons", { selector: ".tag" })).toBeNull();
+  it("leaves the tags to the bar above, and shows the folder when the list mixes folders", () => {
+    row({ item: item({ path: "lessons", tags: ["lessons", "grammar"] }), showPath: true });
+    expect(screen.queryByText("grammar")).toBeNull();
     expect(screen.getByText("lessons", { selector: ".path" })).toBeTruthy();
   });
 });

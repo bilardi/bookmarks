@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Bookmarks, neighbors } from "../src/pages/Bookmarks";
@@ -39,6 +39,18 @@ describe("Bookmarks", () => {
     const tags = await screen.findByLabelText("Tags");
     expect(within(tags).getAllByRole("link").map((a) => a.textContent)).toEqual(["lessons x", "english", "spanish"]);
     expect(screen.queryByRole("link", { name: "lessons/" })).toBeNull();
+  });
+
+  it("shows the arrows and the pencils only while the page is being edited", async () => {
+    mockApi({ "GET /api/folders": [], "GET /api/items": [L1], "GET /api/tags": [] });
+    render(<Bookmarks ownerName="My bookmarks" path="" tags={[]} />);
+
+    await screen.findByText("Lesson 1");
+    expect(screen.queryByRole("button", { name: "Move up" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByRole("button", { name: "Move up" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("button", { name: "Move up" })).toBeNull();
   });
 
   it("says why when the bookmarks cannot be read", async () => {

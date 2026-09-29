@@ -42,6 +42,8 @@ export function Bookmarks({ owner, ownerName, path, tags, curator = false }: Pro
   const [contents, setContents] = useState<Contents | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  // Off at first: reading is what the page is opened for most of the time.
+  const [editing, setEditing] = useState(false);
   const reload = (): void => setVersion((v) => v + 1);
   const tagKey = tags.join(",");
 
@@ -71,7 +73,12 @@ export function Bookmarks({ owner, ownerName, path, tags, curator = false }: Pro
 
   return (
     <section>
-      <Breadcrumb owner={owner} ownerName={ownerName} path={path} />
+      <div className="bar">
+        <Breadcrumb owner={owner} ownerName={ownerName} path={path} />
+        <button type="button" aria-pressed={editing} onClick={() => setEditing(!editing)}>
+          {editing ? "Done" : "Edit"}
+        </button>
+      </div>
       <TagBar
         selected={tags}
         available={available}
@@ -96,8 +103,8 @@ export function Bookmarks({ owner, ownerName, path, tags, curator = false }: Pro
               owner={owner}
               up={up}
               down={down}
-              hiddenTags={tags}
               showPath={filtered}
+              editing={editing}
               curator={curator}
               onChange={reload}
             />

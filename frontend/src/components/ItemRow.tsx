@@ -16,19 +16,20 @@ interface Props {
   // The visible neighbors of the same folder the arrows move past.
   up?: string;
   down?: string;
-  // The tags already selected above the list, not repeated on the row.
-  hiddenTags: string[];
   // With a tag filter the list mixes folders, and each row says its own.
   showPath: boolean;
+  // The arrows and the pencil show only while the page is being edited: on a phone
+  // they would take half the row.
+  editing: boolean;
   curator?: boolean;
   onChange: () => void;
 }
 
 type Panel = "none" | "text" | "open" | "edit";
 
-// One row, the same structure everywhere up to the title: arrows, eye, flag, text,
-// pencil, then the title and the tags.
-export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, curator = false, onChange }: Props) {
+// One row, the same structure everywhere up to the title: arrows while editing, eye,
+// flag, text, pencil while editing, then the title. The tags are in the bar above.
+export function ItemRow({ item, own, owner, up, down, showPath, editing, curator = false, onChange }: Props) {
   const [view, setView] = useState<ViewState>(item.view);
   const [panel, setPanel] = useState<Panel>("none");
   const [error, setError] = useState<string | null>(null);
@@ -60,12 +61,11 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, cura
   const toggle = (next: Panel): void => setPanel(panel === next ? "none" : next);
   const readable = Boolean(item.text) || (!own && view.note !== "");
   const pending = item.file?.status === "pending";
-  const tags = item.tags.filter((t) => !hiddenTags.includes(t));
 
   return (
     <li className="item">
       <div className="row">
-        {own && (
+        {own && editing && (
           <>
             <IconButton icon="up" label="Move up" disabled={up === undefined} onClick={() => up && void move("up", up)} />
             <IconButton icon="down" label="Move down" disabled={down === undefined} onClick={() => down && void move("down", down)} />
@@ -93,7 +93,9 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, cura
           disabled={!readable}
           onClick={() => toggle("text")}
         />
-        <IconButton icon="pencil" label={own ? "Edit" : "Edit your note"} pressed={panel === "edit"} onClick={() => toggle("edit")} />
+        {editing && (
+          <IconButton icon="pencil" label={own ? "Edit" : "Edit your note"} pressed={panel === "edit"} onClick={() => toggle("edit")} />
+        )}
         {item.link !== undefined ? (
           <a className="title" href={item.link} target="_blank" rel="noopener noreferrer">
             {item.title}
@@ -111,11 +113,6 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, cura
           <span className="title">{item.title}</span>
         )}
         {showPath && <span className="path">{item.path === "" ? "/" : item.path}</span>}
-        {tags.map((tag) => (
-          <span key={tag} className="tag">
-            {tag}
-          </span>
-        ))}
       </div>
       {error !== null && <p role="alert">{error}</p>}
       {panel === "text" && (
@@ -131,7 +128,7 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, cura
         </div>
       )}
       {panel === "open" && item.file !== undefined && <Viewer item={item} owner={owner} onClose={() => setPanel("none")} />}
-      {panel === "edit" && !own && (
+      {editing && panel === "edit" && !own && (
         <NoteForm
           owner={owner}
           item={item}
@@ -143,7 +140,7 @@ export function ItemRow({ item, own, owner, up, down, hiddenTags, showPath, cura
           onClose={() => setPanel("none")}
         />
       )}
-      {panel === "edit" && own && (
+      {editing && panel === "edit" && own && (
         <ItemForm
           item={item}
           path={item.path}
