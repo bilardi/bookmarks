@@ -197,6 +197,19 @@ ban: check-profile
 usage: check-profile
 	@$(curator) usage $(REGION)
 
+.PHONY: import # load bookmarks from a CSV file as the curator, CSV=<file> (set AWS_PROFILE and CURATOR_EMAIL)
+import: check-profile
+	# The curator is found in the pool by the address: without a first sign-in there
+	# is nobody to write as, and nothing is written.
+	@test -n "$(CSV)" || { echo "set CSV, the file to import, see docs/IMPORT.md"; exit 1; }
+	@test -n "$(CURATOR_EMAIL)" || { echo "set CURATOR_EMAIL, the address of whoever deploys"; exit 1; }
+	@sub=$$(aws cognito-idp list-users --user-pool-id $(pool) --region $(REGION) \
+		--filter "email = \"$(CURATOR_EMAIL)\"" --query "Users[0].Attributes[?Name=='sub'].Value | [0]" --output text); \
+		if test -z "$$sub" || test "$$sub" = "None"; then echo "$(CURATOR_EMAIL) never signed in: sign in once, then import"; exit 1; fi; \
+		csv=$$(realpath "$(CSV)"); \
+		cd backend && TABLE_NAME=$(call output,TableName) CONTENT_BUCKET=$(call output,ContentBucketName) \
+		AWS_REGION=$(REGION) CURATOR_SUB=$$sub CURATOR_EMAIL=$(CURATOR_EMAIL) npx -y tsx scripts/import.ts "$$csv"
+
 .PHONY: deploy-certificate # ask ACM for the certificate of the site (set AWS_PROFILE)
 deploy-certificate: check-profile
 	# The stack waits until the certificate is validated, and nothing validates it
