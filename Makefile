@@ -162,6 +162,41 @@ outputs: check-profile
 	aws cloudformation describe-stacks --stack-name $(STACK) --region $(REGION) \
 		--query "Stacks[0].Outputs" --output table
 
+# The table and the pool of the stack, for the commands of the curator.
+curator = cd backend && TABLE_NAME=$(call output,TableName) AWS_REGION=$(REGION) npx -y tsx scripts/curator.ts
+pool = $$(basename $(call output,Issuer))
+
+.PHONY: invite # let an address in, EMAIL=<address> (set AWS_PROFILE)
+invite: check-profile
+	@test -n "$(EMAIL)" || { echo "set EMAIL, the address to invite"; exit 1; }
+	@$(curator) invite $(EMAIL)
+
+.PHONY: ban # take the invitation back, sign the person out and remove them from the pool, EMAIL=<address> (set AWS_PROFILE)
+ban: check-profile
+	# The invitation is read only at the first sign-in: the user of the pool goes
+	# too, and with it every refresh token it holds, so the next sign-in is refused.
+	# The token already in hand lasts until it expires, fifteen minutes at most. The
+	# bookmarks and the files of the person stay.
+	@test -n "$(EMAIL)" || { echo "set EMAIL, the address to ban"; exit 1; }
+	# Banning the curator would delete their user, and the next sign-in would make a
+	# new one, with a new sub: every bookmark of the curator would be left without an
+	# owner. The address is the one the stack was deployed with, not the shell's.
+	@curator=$$(aws cloudformation describe-stacks --stack-name $(STACK) --region $(REGION) \
+		--query "Stacks[0].Parameters[?ParameterKey=='CuratorEmail'].ParameterValue" --output text); \
+		if test "$$(echo "$(EMAIL)" | tr '[:upper:]' '[:lower:]')" = "$$(echo "$$curator" | tr '[:upper:]' '[:lower:]')"; then \
+		echo "$(EMAIL) is the curator, who cannot be banned: nothing was changed"; exit 1; fi
+	@$(curator) ban $(EMAIL)
+	@user=$$(aws cognito-idp list-users --user-pool-id $(pool) --region $(REGION) \
+		--filter "email = \"$(EMAIL)\"" --query "Users[0].Username" --output text); \
+		if test -z "$$user" || test "$$user" = "None"; then echo "no user in the pool for $(EMAIL)"; else \
+		aws cognito-idp admin-user-global-sign-out --user-pool-id $(pool) --region $(REGION) --username $$user \
+		&& aws cognito-idp admin-delete-user --user-pool-id $(pool) --region $(REGION) --username $$user \
+		&& echo "signed out and removed from the pool: $$user"; fi
+
+.PHONY: usage # the usage and the costs of everybody, month by month (set AWS_PROFILE)
+usage: check-profile
+	@$(curator) usage $(REGION)
+
 .PHONY: deploy-certificate # ask ACM for the certificate of the site (set AWS_PROFILE)
 deploy-certificate: check-profile
 	# The stack waits until the certificate is validated, and nothing validates it

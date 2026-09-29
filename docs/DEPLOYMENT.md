@@ -85,6 +85,9 @@ The login itself needs a person and a Google account, so it is checked by hand, 
 | `make deploy-site` | rebuilds and uploads the site alone, and invalidates the cache: seconds instead of minutes when only the pages changed |
 | `make outputs` | the addresses of what is deployed, the site and the login page included |
 | `make prices` | the S3 prices as the deploy would read them, writing nothing |
+| `make invite EMAIL=<address>` | lets the address in: the invitation is read at its first sign-in |
+| `make ban EMAIL=<address>` | takes the invitation back, signs the person out and removes them from the pool; their bookmarks stay |
+| `make usage` | the traffic, the storage and the costs of everybody, month by month, with the prices of today |
 
 `make deploy-site` reads the outputs of the stack every time: the build is static, so the identity of the pool is baked into it, and a new pool means a new build.
 
