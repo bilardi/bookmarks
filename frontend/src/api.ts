@@ -112,9 +112,10 @@ export function listOwners(): Promise<OwnerView[]> {
   return request<OwnerView[]>("/owners");
 }
 
-// The owner is left out for the own bookmarks: the backend takes the caller.
-export function listTags(owner: string | undefined): Promise<TagView[]> {
-  return request<TagView[]>(`/tags${query({ owner })}`);
+// The owner is left out for the own bookmarks: the backend takes the caller. With a
+// path, only the tags of what is under that folder; without one, all of them.
+export function listTags(owner: string | undefined, path?: string): Promise<TagView[]> {
+  return request<TagView[]>(`/tags${query({ owner, path })}`);
 }
 
 // Without a path, every folder of the owner, for the list of the form.
@@ -126,8 +127,9 @@ export function listItems(owner: string | undefined, path: string): Promise<Item
   return request<ItemView[]>(`/items${query({ owner, path })}`);
 }
 
-export function filterItems(owner: string | undefined, tags: string[]): Promise<ItemView[]> {
-  return request<ItemView[]>(`/items${query({ owner, tags: tags.join(",") })}`);
+// Only what is under the folder of the page, the root being everything.
+export function filterItems(owner: string | undefined, tags: string[], path: string): Promise<ItemView[]> {
+  return request<ItemView[]>(`/items${query({ owner, path, tags: tags.join(",") })}`);
 }
 
 export function createItem(body: CreateItemBody): Promise<ItemView> {

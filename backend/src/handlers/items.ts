@@ -45,8 +45,10 @@ export function makeItems(storage: Storage) {
         return respond(ok(await getUsage(caller, pricesFromEnv(process.env))));
       case "GET /owners":
         return respond(ok(await listOwnersFor(caller)));
-      case "GET /tags":
-        return respond(await listTags(caller, owner));
+      case "GET /tags": {
+        const path = pathQuery(event);
+        return path === null ? INVALID : respond(await listTags(caller, owner, path));
+      }
       case "GET /folders": {
         if (queryOf(event, "path") === undefined) return respond(await listFoldersOf(caller, owner, undefined));
         const path = pathQuery(event);
@@ -71,7 +73,8 @@ export function makeItems(storage: Storage) {
       case "GET /items": {
         if (queryOf(event, "tags") !== undefined) {
           const tags = tagsQuery(event);
-          return tags === null ? INVALID : respond(await filterItems(caller, owner, tags));
+          const path = pathQuery(event);
+          return tags === null || path === null ? INVALID : respond(await filterItems(caller, owner, tags, path));
         }
         const path = pathQuery(event);
         return path === null ? INVALID : respond(await listFolder(caller, owner, path));

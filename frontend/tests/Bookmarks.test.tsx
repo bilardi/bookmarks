@@ -41,6 +41,23 @@ describe("Bookmarks", () => {
     expect(screen.queryByRole("link", { name: "lessons/" })).toBeNull();
   });
 
+  it("asks for the tags and the filtered items of what is under the folder", async () => {
+    const calls = mockApi({ "GET /api/folders": [], "GET /api/items": [L1], "GET /api/tags": [] });
+    const { unmount } = render(<Bookmarks ownerName="My bookmarks" path="lessons" tags={[]} />);
+    await screen.findByText("Lesson 1");
+    unmount();
+    render(<Bookmarks ownerName="My bookmarks" path="lessons" tags={["english"]} />);
+    await screen.findByText("Lesson 1");
+
+    const query = (route: string) =>
+      calls.filter((c) => new URL(c.url, "http://localhost").pathname === route).map((c) => new URL(c.url, "http://localhost").searchParams);
+    expect(query("/api/tags").map((q) => q.get("path"))).toEqual(["lessons", "lessons"]);
+    expect(query("/api/items").map((q) => [q.get("path"), q.get("tags")])).toEqual([
+      ["lessons", null],
+      ["lessons", "english"],
+    ]);
+  });
+
   it("shows the arrows and the pencils only while the page is being edited", async () => {
     mockApi({ "GET /api/folders": [], "GET /api/items": [L1], "GET /api/tags": [] });
     render(<Bookmarks ownerName="My bookmarks" path="" tags={[]} />);

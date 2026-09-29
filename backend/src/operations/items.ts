@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { between, canRead, filterByTags, nextPosition, tagConnections, tooClose } from "@bookmarks/core";
+import { between, canRead, filterByTags, isInside, nextPosition, tagConnections, tooClose } from "@bookmarks/core";
 import type { CreateItemBody, Item, ItemView, MoveBody, PatchItemBody, TagView } from "@bookmarks/core";
 
 import {
@@ -133,13 +133,19 @@ export async function listFolder(caller: Caller, owner: string, path: string): P
 }
 
 // The members of the smallest selected tag are read, then filtered on the others:
-// the fewest reads for an intersection.
-export async function filterItems(caller: Caller, owner: string, tags: string[]): Promise<Result<ItemView[]>> {
+// the fewest reads for an intersection. Only what is under the path is kept, the
+// root being everything.
+export async function filterItems(
+  caller: Caller,
+  owner: string,
+  tags: string[],
+  path = "",
+): Promise<Result<ItemView[]>> {
   const counts = new Map((await listTagRecords(owner)).map((tag) => [tag.name, tag.itemCount]));
   if (tags.some((tag) => !counts.get(tag))) return ok([]);
   const smallest = [...tags].sort((a, b) => (counts.get(a) as number) - (counts.get(b) as number))[0];
-  const items = (await itemsByIds(owner, await tagMembers(owner, smallest))).filter((item) =>
-    canRead(item, caller.userId),
+  const items = (await itemsByIds(owner, await tagMembers(owner, smallest))).filter(
+    (item) => canRead(item, caller.userId) && isInside(item.path, path),
   );
   const matching = filterByTags(items, tags).items.sort((a, b) =>
     a.path === b.path ? a.position - b.position : a.path < b.path ? -1 : 1,
@@ -147,19 +153,25 @@ export async function filterItems(caller: Caller, owner: string, tags: string[])
   return ok(await withViews(caller, matching));
 }
 
-// Others see a tag only while something shared carries it, and its count is what
-// they can see.
-export async function listTags(caller: Caller, owner: string): Promise<Result<TagView[]>> {
-  const own = owner === caller.userId;
-  // The tone of a tag comes from everything the caller can read of this owner, not
-  // from a filter: it stays the same while the bar narrows.
+// The tags of what the caller can read under the path, subfolders included, the root
+// being everything: others see only the shared items, so a tag counts only those.
+export async function listTags(caller: Caller, owner: string, path = ""): Promise<Result<TagView[]>> {
   const readable = (await listOwnerItems(owner)).filter((item) => canRead(item, caller.userId));
+  // The tone of a tag comes from everything the caller can read of this owner, not
+  // from the folder or a filter: it stays the same wherever the bar is shown.
   const connections = tagConnections(readable);
-  const tags = (await listTagRecords(owner))
-    .filter((tag) => (own ? tag.itemCount > 0 : tag.sharedCount > 0))
-    .map((tag) => ({
-      ...(own ? tag : { ...tag, itemCount: tag.sharedCount }),
-      connections: connections.get(tag.name) ?? 1,
-    }));
+  const counts = new Map<string, { itemCount: number; sharedCount: number }>();
+  for (const item of readable) {
+    if (!isInside(item.path, path)) continue;
+    for (const name of item.tags) {
+      const count = counts.get(name) ?? { itemCount: 0, sharedCount: 0 };
+      count.itemCount += 1;
+      if (item.shared) count.sharedCount += 1;
+      counts.set(name, count);
+    }
+  }
+  const tags = [...counts]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([name, count]) => ({ name, ...count, connections: connections.get(name) ?? 1 }));
   return ok(tags);
 }

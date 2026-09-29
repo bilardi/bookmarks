@@ -49,9 +49,9 @@ export function Bookmarks({ owner, ownerName, path, tags, curator = false }: Pro
 
   useEffect(() => {
     let alive = true;
-    const items = filtered ? filterItems(owner, tags) : listItems(owner, path);
+    const items = filtered ? filterItems(owner, tags, path) : listItems(owner, path);
     const folders = filtered ? Promise.resolve([]) : listFolders(owner, path);
-    Promise.all([folders, items, listTags(owner)])
+    Promise.all([folders, items, listTags(owner, path)])
       .then(([f, i, t]) => {
         if (!alive) return;
         setContents({ folders: f, items: i, tags: t });
