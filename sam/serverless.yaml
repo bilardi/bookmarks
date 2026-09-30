@@ -129,11 +129,13 @@ Resources:
               # The id token carries the name and the email, and the gateway
               # matches it on aud.
               audience: [!Ref Audience]
-      # The public route answers anybody: a limit of its own, beside the cache of CloudFront.
+      # The public route answers anybody: a limit of its own, beside the cache of
+      # CloudFront, which already sends it one request every five minutes per edge
+      # location. One request a second, with up to five at once.
       RouteSettings:
         "GET /public/items":
-          ThrottlingBurstLimit: 20
-          ThrottlingRateLimit: 10
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 1
 
   ItemsLogGroup:
     Type: AWS::Logs::LogGroup
