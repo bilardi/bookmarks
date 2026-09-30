@@ -95,6 +95,20 @@ button[disabled] {
   color: var(--muted);
 }
 
+/* Every button that can be pressed darkens a little under the pointer, with a
+   light shadow, so it reads as something to press. */
+button:not(:disabled):hover {
+  background-color: #f2f2f2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+/* A title is a link to read, not a button to press. */
+button.title:hover {
+  background: none;
+  box-shadow: none;
+}
+
 .tag {
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -205,46 +219,91 @@ li.item .title {
   margin: 0.5rem 0;
 }
 
-a.tag {
+/* The tones of bookmarks-v3.0, the colors of Bootstrap 3, each flat on the whole
+   button: how many other tags a tag appears with, from none (0, light grey) to
+   five or more (5). Under the pointer a tag darkens a little, with a light shadow. */
+a.tag,
+button.tag {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  background-color: #efefef;
+  color: #333333;
   text-decoration: none;
+  cursor: pointer;
 }
 
-/* The tones of bookmarks-v3.0, the colors of Bootstrap 3: how many tags a tag
-   appears with, from alone (1) to four or more others (5). */
+a.tag:hover,
+button.tag:hover {
+  background-color: #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+a.tag:active,
+button.tag:active {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
 .tag.tone-1 {
-  background: #ffffff;
-  border-color: #cccccc;
-  color: #333333;
+  background-color: #ffffff;
+}
+
+.tag.tone-1:hover {
+  background-color: #eeeeee;
+}
+
+.tag.tone-2,
+.tag.tone-3,
+.tag.tone-4,
+.tag.tone-5,
+.tag.selected {
+  color: #ffffff;
 }
 
 .tag.tone-2 {
-  background: #337ab7;
+  background-color: #337ab7;
   border-color: #2e6da4;
-  color: #ffffff;
+}
+
+.tag.tone-2:hover {
+  background-color: #286090;
 }
 
 .tag.tone-3 {
-  background: #5cb85c;
+  background-color: #5cb85c;
   border-color: #4cae4c;
-  color: #ffffff;
+}
+
+.tag.tone-3:hover {
+  background-color: #449d44;
 }
 
 .tag.tone-4 {
-  background: #5bc0de;
+  background-color: #5bc0de;
   border-color: #46b8da;
-  color: #ffffff;
+}
+
+.tag.tone-4:hover {
+  background-color: #31b0d5;
 }
 
 .tag.tone-5 {
-  background: #f0ad4e;
+  background-color: #f0ad4e;
   border-color: #eea236;
-  color: #ffffff;
+}
+
+.tag.tone-5:hover {
+  background-color: #ec971f;
 }
 
 .tag.selected {
-  background: #d9534f;
+  background-color: #d9534f;
   border-color: #d43f3a;
-  color: #ffffff;
+}
+
+.tag.selected:hover {
+  background-color: #c9302c;
 }
 
 .panel {
@@ -284,4 +343,11 @@ footer {
   max-width: 900px;
   margin: 0 auto;
   padding: 0 1rem 2rem;
+}
+
+/* The line above the footer, as wide as the content of the page. */
+footer hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0 0 1rem;
 }

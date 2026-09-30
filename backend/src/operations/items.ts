@@ -172,6 +172,6 @@ export async function listTags(caller: Caller, owner: string, path = ""): Promis
   }
   const tags = [...counts]
     .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([name, count]) => ({ name, ...count, connections: connections.get(name) ?? 1 }));
+    .map(([name, count]) => ({ name, ...count, connections: connections.get(name) ?? 0 }));
   return ok(tags);
 }

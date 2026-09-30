@@ -23,6 +23,18 @@ describe("App", () => {
     expect(await screen.findByText(/The curator of this site can read the bookmarks of everybody/)).toBeTruthy();
   });
 
+  it("says at the bottom where the code is, and where the old version is", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("no api in tests"));
+    render(<App />);
+
+    const footer = await screen.findByRole("contentinfo");
+    expect(within(footer).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      ["GitHub", "https://github.com/bilardi/bookmarks"],
+      ["old version", "https://alessandra.bilardi.net/bookmarks-v3.0/"],
+      ["GitHub", "https://github.com/bilardi/bookmarks-v3.0"],
+    ]);
+  });
+
   it("shows the public bookmarks without starting a login", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
     window.history.replaceState({}, "", "/public");

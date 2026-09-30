@@ -82,11 +82,11 @@ describe("listTags", () => {
 
     const own = await listTags(CURATOR, CURATOR.userId);
     expect(own.ok && Object.fromEntries(own.view.map((t) => [t.name, t.connections]))).toEqual({
-      english: 2,
-      lessons: 3,
-      private: 2,
+      english: 1,
+      lessons: 2,
+      private: 1,
     });
     const seen = await listTags(OTHER, CURATOR.userId);
-    expect(seen.ok && Object.fromEntries(seen.view.map((t) => [t.name, t.connections]))).toEqual({ english: 2, lessons: 2 });
+    expect(seen.ok && Object.fromEntries(seen.view.map((t) => [t.name, t.connections]))).toEqual({ english: 1, lessons: 1 });
   });
 });

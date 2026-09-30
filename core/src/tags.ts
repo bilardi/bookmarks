@@ -24,14 +24,14 @@ export function filterByTags<T extends { tags: string[] }>(
   return { items: matching, available: [...available].sort() };
 }
 
-// How many different tags appear together with each tag, the tag itself counted,
-// over the items given: bookmarks-v3.0 ordered and colored its tags by this.
+// How many other tags appear together with each tag, over the items given:
+// bookmarks-v3.0 ordered and colored its tags by this, not by how many items carry them.
 export function tagConnections(items: { tags: string[] }[]): Map<string, number> {
   const together = new Map<string, Set<string>>();
   for (const item of items) {
     for (const tag of item.tags) {
       const seen = together.get(tag) ?? new Set<string>();
-      for (const other of item.tags) seen.add(other);
+      for (const other of item.tags) if (other !== tag) seen.add(other);
       together.set(tag, seen);
     }
   }
@@ -40,9 +40,10 @@ export function tagConnections(items: { tags: string[] }[]): Map<string, number>
 
 export const TAG_TONES = 5;
 
-// 1 when a tag appears alone, up to 5 when it appears with four or more others.
+// The tones of bookmarks-v3.0: 0 for a tag alone, then one tone for each other tag
+// it appears with, up to 5 for five or more.
 export function tagTone(connections: number): number {
-  return Math.min(Math.max(connections, 1), TAG_TONES);
+  return Math.min(Math.max(connections, 0), TAG_TONES);
 }
 
 // The most connected first, and by name among equals.

@@ -5,6 +5,7 @@ import type { PublicItemView } from "@bookmarks/core";
 
 import { listPublic, messageOf } from "../api";
 import { isCognito, login } from "../auth";
+import { Credits } from "../components/Credits";
 import { TagBar } from "../components/TagBar";
 import { navigate, PATHS, publicPath } from "../router";
 
@@ -51,6 +52,10 @@ export function PublicBookmarks({ tags }: { tags: string[] }) {
           </>
         )}
       </main>
+      <footer>
+        <hr />
+        <Credits />
+      </footer>
     </>
   );
 }

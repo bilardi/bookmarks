@@ -129,7 +129,7 @@ export interface TagView {
   name: string;
   itemCount: number;
   sharedCount: number;
-  // How many different tags appear with this one over what the caller can read.
+  // How many other tags appear with this one over what the caller can read.
   connections: number;
 }
 

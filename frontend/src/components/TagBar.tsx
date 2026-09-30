@@ -25,7 +25,7 @@ export function TagBar({ selected, available, connections, pathOf }: Props) {
         </Link>
       ))}
       {byConnections(available, connections).map((tag) => (
-        <Link key={tag} className={`tag tone-${tagTone(connections.get(tag) ?? 1)}`} to={pathOf([...selected, tag])}>
+        <Link key={tag} className={`tag tone-${tagTone(connections.get(tag) ?? 0)}`} to={pathOf([...selected, tag])}>
           {tag}
         </Link>
       ))}

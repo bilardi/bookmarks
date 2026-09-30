@@ -28,6 +28,14 @@ describe("PublicBookmarks", () => {
     expect(within(list).queryAllByRole("button")).toEqual([]);
   });
 
+  it("says at the bottom where the code is", async () => {
+    mockApi({ "GET /api/public/items": ITEMS });
+    render(<PublicBookmarks tags={[]} />);
+
+    const footer = await screen.findByRole("contentinfo");
+    expect(within(footer).getAllByRole("link")[0].getAttribute("href")).toBe("https://github.com/bilardi/bookmarks");
+  });
+
   it("narrows by tags, and offers only the tags that appear together", async () => {
     mockApi({ "GET /api/public/items": ITEMS });
     render(<PublicBookmarks tags={["linux"]} />);

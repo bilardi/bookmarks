@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { MeView, OwnerView } from "@bookmarks/core";
 
 import { getMe, listOwners } from "./api";
+import { Credits } from "./components/Credits";
 import { Link } from "./components/Link";
 import { currentUser, hasSession, isCognito, login, logout, refusal, startSession } from "./auth";
 import { PATHS, useRoute } from "./router";
@@ -124,9 +125,11 @@ export function App() {
         {route.name === "usage" && <Usage />}
       </main>
       <footer>
+        <hr />
         <p className="muted">
           The curator of this site can read the bookmarks of everybody, to help when something goes wrong.
         </p>
+        <Credits />
       </footer>
     </>
   );

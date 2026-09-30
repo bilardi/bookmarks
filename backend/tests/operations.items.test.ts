@@ -148,7 +148,7 @@ describe("filterItems and listTags", () => {
     const a = await add("a", { tags: ["x", "y"] });
     await updateItem(A, a.id, { tags: ["x"] });
     const res = await listTags(A, A.userId);
-    expect(res.ok && res.view).toEqual([{ name: "x", itemCount: 1, sharedCount: 0, connections: 1 }]);
+    expect(res.ok && res.view).toEqual([{ name: "x", itemCount: 1, sharedCount: 0, connections: 0 }]);
   });
 
   it("lists the tags of what is under a folder, subfolders included, with the tone of the whole", async () => {
@@ -158,14 +158,14 @@ describe("filterItems and listTags", () => {
 
     const lessons = await listTags(A, A.userId, "lessons");
     expect(lessons.ok && lessons.view).toEqual([
-      { name: "english", itemCount: 1, sharedCount: 0, connections: 2 },
-      { name: "lessons", itemCount: 2, sharedCount: 1, connections: 3 },
-      { name: "spanish", itemCount: 1, sharedCount: 1, connections: 2 },
+      { name: "english", itemCount: 1, sharedCount: 0, connections: 1 },
+      { name: "lessons", itemCount: 2, sharedCount: 1, connections: 2 },
+      { name: "spanish", itemCount: 1, sharedCount: 1, connections: 1 },
     ]);
     const english = await listTags(A, A.userId, "lessons/english");
     expect(english.ok && english.view.map((t) => [t.name, t.itemCount, t.connections])).toEqual([
-      ["english", 1, 2],
-      ["lessons", 1, 3],
+      ["english", 1, 1],
+      ["lessons", 1, 2],
     ]);
     const root = await listTags(A, A.userId, "");
     expect(root.ok && root.view.map((t) => t.name)).toEqual(["english", "lessons", "pasta", "spanish"]);

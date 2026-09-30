@@ -30,20 +30,19 @@ describe("filterByTags", () => {
 });
 
 describe("tagConnections", () => {
-  it("counts the different tags each tag appears with, itself included", () => {
+  it("counts the other tags each tag appears with", () => {
     const connections = tagConnections([
       { tags: ["lessons", "english", "grammar"] },
       { tags: ["lessons", "spanish"] },
       { tags: ["alone"] },
     ]);
-    expect(Object.fromEntries(connections)).toEqual({ lessons: 4, english: 3, grammar: 3, spanish: 2, alone: 1 });
+    expect(Object.fromEntries(connections)).toEqual({ lessons: 3, english: 2, grammar: 2, spanish: 1, alone: 0 });
   });
 });
 
 describe("tagTone", () => {
-  it("goes from 1, a tag alone, to 5, a tag with four or more others", () => {
-    expect([1, 2, 3, 4, 5, 16].map(tagTone)).toEqual([1, 2, 3, 4, 5, 5]);
-    expect(tagTone(0)).toBe(1);
+  it("goes as in bookmarks-v3.0, from 0, a tag alone, to 5, a tag with five or more others", () => {
+    expect([0, 1, 2, 3, 4, 5, 16].map(tagTone)).toEqual([0, 1, 2, 3, 4, 5, 5]);
   });
 });
 
