@@ -101,6 +101,11 @@ Resources:
             Status: Enabled
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
+          # The archive of an export lives as long as its link, seven days.
+          - Id: expire-exports
+            Status: Enabled
+            Prefix: exports/
+            ExpirationInDays: 7
 
   # HTTP API (v2). Every route needs a token from the pool, except the public one.
   HttpApi:

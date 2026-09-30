@@ -210,6 +210,22 @@ import: check-profile
 		cd backend && TABLE_NAME=$(call output,TableName) CONTENT_BUCKET=$(call output,ContentBucketName) \
 		AWS_REGION=$(REGION) CURATOR_SUB=$$sub CURATOR_EMAIL=$(CURATOR_EMAIL) npx -y tsx scripts/import.ts "$$csv"
 
+.PHONY: export # everything of a person in a zip, and a link to it for seven days, EMAIL=<address> (set AWS_PROFILE)
+export: check-profile
+	# The folder is a temporary one, removed once the archive is uploaded: the data
+	# of the person does not stay on this computer. The link lasts seven days only
+	# with permanent keys: signed with temporary ones, it ends with their session.
+	@test -n "$(EMAIL)" || { echo "set EMAIL, the address of the person"; exit 1; }
+	@bucket=$(call output,ContentBucketName); dir=$$(mktemp -d); \
+		sub=$$(cd backend && TABLE_NAME=$(call output,TableName) CONTENT_BUCKET=$$bucket AWS_REGION=$(REGION) \
+			npx -y tsx scripts/export.ts $(EMAIL) $$dir | tail -1) \
+		&& test -n "$$sub" \
+		&& (cd $$dir && zip -qr $$dir.zip .) \
+		&& aws s3 cp $$dir.zip s3://$$bucket/exports/$$sub.zip --region $(REGION) --only-show-errors \
+		&& echo "the link, valid seven days:" \
+		&& aws s3 presign s3://$$bucket/exports/$$sub.zip --expires-in 604800 --region $(REGION); \
+		status=$$?; rm -rf $$dir $$dir.zip; exit $$status
+
 .PHONY: deploy-certificate # ask ACM for the certificate of the site (set AWS_PROFILE)
 deploy-certificate: check-profile
 	# The stack waits until the certificate is validated, and nothing validates it

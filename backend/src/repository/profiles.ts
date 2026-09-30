@@ -1,4 +1,4 @@
-import { GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 import type { OwnerView } from "@bookmarks/core";
 
@@ -81,4 +81,25 @@ export async function addStoredBytes(sub: string, delta: number): Promise<void> 
       ExpressionAttributeValues: { ":delta": delta },
     }),
   );
+}
+
+// For the curator only, from the command line: the person may be banned, so the
+// pool no longer knows them, while their profile still holds the address.
+export async function findProfileByEmail(email: string): Promise<ProfileRecord | null> {
+  const address = email.toLowerCase();
+  let start: Record<string, unknown> | undefined;
+  do {
+    const res = await doc.send(
+      new ScanCommand({
+        TableName: TABLE_NAME,
+        FilterExpression: "sk = :profile AND email = :email",
+        ExpressionAttributeValues: { ":profile": PROFILE_SK, ":email": address },
+        ExclusiveStartKey: start,
+      }),
+    );
+    const found = res.Items?.[0];
+    if (found) return getProfileRecord(String(found.userId));
+    start = res.LastEvaluatedKey;
+  } while (start);
+  return null;
 }
