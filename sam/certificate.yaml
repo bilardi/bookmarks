@@ -4,7 +4,7 @@ Description: bookmarks certificate for CloudFront (us-east-1), validated by a re
 Parameters:
   SiteDomainName:
     Type: String
-    Default: bookmarks.alessandra.bilardi.net
+    Default: bookmarks.bilardi.net
     Description: Address of the site
 
 Resources:

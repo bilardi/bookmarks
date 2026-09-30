@@ -27,7 +27,7 @@ The variables of the Makefile:
 | `CURATOR_EMAIL` | none, required to deploy and to import | the Google address of whoever deploys | who enters without an invitation, publishes, and owns what is imported |
 | `REGION` | `eu-west-1` | any region with Cognito and HTTP API | where the stack lives |
 | `GOOGLE_CLIENT` | `/google-client/bookmarks` | any path in Parameter Store | where the deploy reads the Google credentials |
-| `SITE_DOMAIN` | `bookmarks.alessandra.bilardi.net` | any name of a domain you control | the address the certificate is asked for |
+| `SITE_DOMAIN` | `bookmarks.bilardi.net` | any name of a domain you control | the address the certificate is asked for |
 | `DOMAIN` | unset | `off` | `off` takes the address of its own away from the site, back on the one CloudFront gives |
 
 The other commands of the deploy:
@@ -45,16 +45,87 @@ Once deployed, the curator invites, bans and reads the usage of everybody with t
 
 ## An address of its own
 
-Optional, and after the first deploy. The certificate is a stack apart in us-east-1, the only region CloudFront takes one from, and it is free; there is no Route 53 zone, so its two DNS records are written by hand in the DNS of the parent domain.
+Optional, and after the first deploy. The certificate is a stack apart in us-east-1, the only region CloudFront takes one from, and it is free. There is no Route 53 zone: two CNAME records are written by hand in the DNS of the parent domain, `bilardi.net`, next to its other records. The nameservers of the domain do not change.
+
+| Record | Name | Target | What it is for |
+|---|---|---|---|
+| validation | `_<prefix>.bookmarks.bilardi.net` | `_<value>.acm-validations.aws` | proves to ACM that the domain is yours, now and at every renewal |
+| site | `bookmarks.bilardi.net` | the host name of the distribution, like `d1jws8nweu9u74.cloudfront.net` | sends whoever opens the name to CloudFront |
+
+Both stay in the DNS for good.
+
+### Before the certificate: the CAA records
+
+A CAA record says which authorities may issue certificates for a name, and ACM follows it: the name, and then each domain above it, following any CNAME. None of them may exclude Amazon:
+
+```sh
+dig +short CAA bookmarks.bilardi.net
+dig +short CAA bilardi.net
+```
+
+Both answer nothing, so any authority may issue. A name under a domain that is itself a CNAME to another service inherits the CAA records of that service: under `alessandra.bilardi.net`, a CNAME to GitHub Pages, only Let's Encrypt, DigiCert and Sectigo may issue, and ACM never does. That is why the site is `bookmarks.bilardi.net`.
+
+### The certificate
 
 ```sh
 export AWS_PROFILE=<profile>
-make deploy-certificate  # waits until the certificate is validated
-make certificate-record  # in another shell, with AWS_PROFILE exported too: the CNAME record that validates it
-make deploy  # carries the site onto the name, and prints the second CNAME
+make deploy-certificate  # waits until the certificate is issued
 ```
 
-The validation record stays in the DNS for good, because ACM renews the certificate as long as it finds it. The second record points the name of the site at the distribution. `make deploy` reads the certificate stack every time, so a later deploy never takes the site off its name by forgetting it.
+In another shell, with `AWS_PROFILE` exported too, the validation record:
+
+```sh
+make certificate-record
+```
+
+It prints the name and the value of the record. In a DNS panel that asks for a subdomain, a target and a TTL:
+
+- **Subdomain**: the name without `.bilardi.net.`, like `_1878da59b13307f1252ac7e67413e4b8.bookmarks`, because the panel adds the domain by itself
+- **Target**: the value as printed, the final dot included or left out, as the panel accepts it
+- **TTL**: the default
+
+The record is visible to everybody when a public resolver answers it:
+
+```sh
+dig +short CNAME _<prefix>.bookmarks.bilardi.net @8.8.8.8
+```
+
+And ACM says where it is, `PENDING_VALIDATION` until it finds the record and `ISSUED` after; usually minutes, and ACM waits up to 72 hours:
+
+```sh
+aws acm list-certificates --region us-east-1 --certificate-statuses PENDING_VALIDATION ISSUED \
+  --query "CertificateSummaryList[?DomainName=='bookmarks.bilardi.net'].[Status]" --output text
+```
+
+At `ISSUED`, `make deploy-certificate` ends by itself.
+
+### The site on its name
+
+```sh
+make deploy
+```
+
+`make deploy` finds the certificate, gives the distribution the name, adds it to the addresses of the login, and prints the site record: the name as a CNAME to the host name of the distribution. In the panel:
+
+- **Subdomain**: `bookmarks`
+- **Target**: the host name printed, like `d1jws8nweu9u74.cloudfront.net.`
+- **TTL**: the default
+
+The checks at the end of that deploy fail with `000` until the record exists. Once it answers:
+
+```sh
+dig +short CNAME bookmarks.bilardi.net  # the host name of the distribution
+make check-deployed
+```
+
+If `dig` answers and the checks still fail with `000`, and `curl -v https://bookmarks.bilardi.net` says `Could not resolve host`, the resolver of the computer asked for the name before the record existed and keeps the answer "no such name" for a while. Emptying its cache ends the wait:
+
+```sh
+resolvectl flush-caches  # systemd-resolved, as on Fedora and Ubuntu
+make check-deployed
+```
+
+`make deploy` reads the certificate stack every time, so a later deploy never takes the site off its name by forgetting it. The address CloudFront gives keeps answering beside the name, and the login accepts both.
 
 ## The checks
 

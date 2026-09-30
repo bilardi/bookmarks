@@ -12,7 +12,7 @@ GOOGLE_CLIENT ?= /google-client/bookmarks
 # CloudFront takes a certificate only from there.
 CERTIFICATE_REGION ?= us-east-1
 # The address of the site, which the certificate is asked for.
-SITE_DOMAIN ?= bookmarks.alessandra.bilardi.net
+SITE_DOMAIN ?= bookmarks.bilardi.net
 # The address of whoever deploys, the one let in without an invitation: exported in
 # the shell or given on the command line, never written in the repository.
 CURATOR_EMAIL ?=
