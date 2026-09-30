@@ -81,7 +81,7 @@ The CSV file stays on the computer: only the files go to S3. The curator must ha
 
 The import reads the whole file before writing anything. A row that is not valid, a column that is not known, or a file missing under `import/` stops it, with the number of each row and the reason, and nothing is created.
 
-A row with the same title as an item already in the same folder is skipped, and the import says so. Running the same file again after an interruption therefore creates only what was missing, and never a second copy. The other side of the rule: two different items with the same title in the same folder need two different titles.
+A row with the same title as an item already in the same folder is skipped, and the import says so. Running the same file again after an interruption therefore creates only what was missing, and never a second copy. So two different items in the same folder need two different titles.
 
 A skipped row needs no file under `import/`, since its file was moved the first time. The one exception is an item whose file never arrived, because the run was cut between creating it and moving its file: that file is looked for under `import/` again, and moved.
 

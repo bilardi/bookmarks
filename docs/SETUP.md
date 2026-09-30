@@ -103,7 +103,7 @@ export CURATOR_EMAIL=<the address>
 
 ## Check the login works
 
-Worth doing after the first deploy, and after every change to the Google client, because it exercises the whole chain, Cognito, Google, the invitation trigger and the API, before any page exists.
+After the first deploy, and after every change to the Google client: it exercises the whole chain, Cognito, Google, the invitation trigger and the API, without the pages.
 
 The stack outputs carry every address it needs:
 
@@ -144,7 +144,7 @@ curl -s -H "authorization: Bearer $ID_TOKEN" $SiteUrl/api/me
 
 `"curator": true` proves the address given at the deploy reached the functions.
 
-The refusal is worth trying too: the same login page in a private window, with a Google account whose address is not invited. Cognito calls the invitation trigger before creating the user, the trigger refuses, no user is created, and the browser ends on `http://localhost:5173/?error_description=PreSignUp+failed+with+error+not-invited.+&error=invalid_request`.
+The refusal, too: the same login page in a private window, with a Google account whose address is not invited. Cognito calls the invitation trigger before creating the user, the trigger refuses, no user is created, and the browser ends on `http://localhost:5173/?error_description=PreSignUp+failed+with+error+not-invited.+&error=invalid_request`.
 
 The check ends by throwing the tokens away: the id token lives fifteen minutes and the refresh one an hour, but `/tmp/token.json` is a credential until it is deleted.
 
