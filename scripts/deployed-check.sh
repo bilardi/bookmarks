@@ -58,8 +58,9 @@ check "the site is served" 200 "$(status "$SITE/")"
 check "a route of the app falls back to the page" 200 "$(status "$SITE/my/lessons")"
 check "the public page is served without a login" 200 "$(status "$SITE/public")"
 check "the public bookmarks answer without a login" 200 "$(status "$SITE/api/public/items")"
-# The second request of the same address comes from the cache of CloudFront.
-curl -s -o /dev/null "$SITE/api/public/items"
+# The second request of the same address comes from the cache of CloudFront. The
+# first only fills it: when it fails, the check below says so, and the script goes on.
+curl -s -o /dev/null "$SITE/api/public/items" || true
 contains "the public bookmarks come from the cache" "x-cache: hit from cloudfront" \
     "$(curl -s -o /dev/null -D - "$SITE/api/public/items" | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
 check "the API answers through CloudFront, asking for a token" 401 "$(status "$SITE/api/me")"
