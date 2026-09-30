@@ -226,6 +226,41 @@ export: check-profile
 		&& aws s3 presign s3://$$bucket/exports/$$sub.zip --expires-in 604800 --region $(REGION); \
 		status=$$?; rm -rf $$dir $$dir.zip; exit $$status
 
+.PHONY: purge # delete everything of a banned person, asking whether their shared items pass to the curator, EMAIL=<address> (set AWS_PROFILE)
+purge: check-profile
+	# After make ban and make export: a person still in the pool could sign in again
+	# and start with nothing, so they are banned first. The curator cannot be purged.
+	# The shared items are listed before the question, which answers no by default,
+	# and nothing is deleted until the address is typed again.
+	@test -n "$(EMAIL)" || { echo "set EMAIL, the address of the person"; exit 1; }
+	@curator=$$(aws cloudformation describe-stacks --stack-name $(STACK) --region $(REGION) \
+		--query "Stacks[0].Parameters[?ParameterKey=='CuratorEmail'].ParameterValue" --output text); \
+		if test "$$(echo "$(EMAIL)" | tr '[:upper:]' '[:lower:]')" = "$$(echo "$$curator" | tr '[:upper:]' '[:lower:]')"; then \
+		echo "$(EMAIL) is the curator, who cannot be purged: nothing was changed"; exit 1; fi
+	@user=$$(aws cognito-idp list-users --user-pool-id $(pool) --region $(REGION) \
+		--filter "email = \"$(EMAIL)\"" --query "Users[0].Username" --output text); \
+		if test -n "$$user" && test "$$user" != "None"; then echo "$(EMAIL) is still in the pool: make ban first"; exit 1; fi
+	@bucket=$(call output,ContentBucketName); table=$(call output,TableName); \
+		preview=$$(cd backend && TABLE_NAME=$$table AWS_REGION=$(REGION) npx -y tsx scripts/purge.ts preview $(EMAIL)) || exit 1; \
+		shared=$$(echo "$$preview" | head -1); keep=""; sub=""; summary=""; \
+		if test "$$shared" -gt 0; then \
+		echo "$$(echo "$$preview" | tail -n +2)"; \
+		printf "Pass these $$shared shared items to the curator, under from/? [y/N] "; read pass; \
+		case "$$pass" in \
+		y|Y) test -n "$(CURATOR_EMAIL)" || { echo "set CURATOR_EMAIL, to pass the shared items to the curator"; exit 1; }; \
+			sub=$$(aws cognito-idp list-users --user-pool-id $(pool) --region $(REGION) \
+				--filter "email = \"$(CURATOR_EMAIL)\"" --query "Users[0].Attributes[?Name=='sub'].Value | [0]" --output text); \
+			if test -z "$$sub" || test "$$sub" = "None"; then echo "$(CURATOR_EMAIL) never signed in: nobody to pass the shared items to"; exit 1; fi; \
+			keep=keep-shared; summary=", passing its $$shared shared items to the curator first";; \
+		*) summary=", its $$shared shared items included";; \
+		esac; fi; \
+		printf "This deletes everything of $(EMAIL)$$summary, and it cannot be undone.\nType the address again to go on: "; \
+		read answer; test "$$answer" = "$(EMAIL)" || { echo "nothing was deleted"; exit 1; }; \
+		gone=$$(cd backend && TABLE_NAME=$$table CONTENT_BUCKET=$$bucket AWS_REGION=$(REGION) \
+			CURATOR_SUB=$$sub CURATOR_EMAIL=$(CURATOR_EMAIL) npx -y tsx scripts/purge.ts run $(EMAIL) $$keep | tee /dev/stderr | tail -1) \
+		&& test -n "$$gone" \
+		&& aws s3 rm s3://$$bucket/exports/$$gone.zip --region $(REGION) --only-show-errors
+
 .PHONY: deploy-certificate # ask ACM for the certificate of the site (set AWS_PROFILE)
 deploy-certificate: check-profile
 	# The stack waits until the certificate is validated, and nothing validates it
