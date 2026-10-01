@@ -175,7 +175,7 @@ invite: check-profile
 ban: check-profile
 	# The invitation is read only at the first sign-in: the user of the pool goes
 	# too, and with it every refresh token it holds, so the next sign-in is refused.
-	# The token already in hand lasts until it expires, fifteen minutes at most. The
+	# The token already in hand lasts until it expires, five minutes at most. The
 	# bookmarks and the files of the person stay.
 	@test -n "$(EMAIL)" || { echo "set EMAIL, the address to ban"; exit 1; }
 	# Banning the curator would delete their user, and the next sign-in would make a

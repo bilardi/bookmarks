@@ -146,7 +146,7 @@ curl -s -H "authorization: Bearer $ID_TOKEN" $SiteUrl/api/me
 
 The refusal, too: the same login page in a private window, with a Google account whose address is not invited. Cognito calls the invitation trigger before creating the user, the trigger refuses, no user is created, and the browser ends on `http://localhost:5173/?error_description=PreSignUp+failed+with+error+not-invited.+&error=invalid_request`.
 
-The check ends by throwing the tokens away: the id token lives fifteen minutes and the refresh one an hour, but `/tmp/token.json` is a credential until it is deleted.
+The check ends by throwing the tokens away: the id token lives five minutes and the refresh one an hour, but `/tmp/token.json` is a credential until it is deleted.
 
 ```sh
 rm /tmp/token.json

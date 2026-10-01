@@ -137,13 +137,15 @@ Resources:
             - !Sub "${DevCallbackUrl}${LogoutPath}"
           - [!Sub "${CallbackUrl}${LogoutPath}", !Sub "${DevCallbackUrl}${LogoutPath}"]
         - [!Sub "${CallbackUrl}${LogoutPath}"]
-      # The shortest lifetimes Cognito allows: the tokens live in the storage of the
-      # tab, and a token copied by a script in the page works for an hour at most.
+      # The shortest lifetimes Cognito allows, five minutes and an hour: the tokens
+      # live in the storage of the tab, and a token copied by a script in the page
+      # works for an hour at most, and the one already in hand of a person banned for
+      # five minutes at most.
       # Written out, because after a change removing these lines would not put the
       # defaults back.
       RefreshTokenValidity: 60
-      AccessTokenValidity: 15
-      IdTokenValidity: 15
+      AccessTokenValidity: 5
+      IdTokenValidity: 5
       TokenValidityUnits:
         AccessToken: minutes
         IdToken: minutes

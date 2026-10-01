@@ -4,7 +4,7 @@ import { PATHS } from "../router";
 import type { CurrentUser } from "./dev";
 
 // The tokens live in sessionStorage, the refresh one included, and they all die
-// with the tab. The pool gives them the shortest lifetimes it allows, fifteen
+// with the tab. The pool gives them the shortest lifetimes it allows, five
 // minutes and an hour: the bookmarks are private, and a token copied by a script
 // in the page would work for an hour at most.
 const manager = new UserManager({
