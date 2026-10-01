@@ -127,6 +127,32 @@ make check-deployed
 
 `make deploy` reads the certificate stack every time, so a later deploy never takes the site off its name by forgetting it. The address CloudFront gives keeps answering beside the name, and the login accepts both.
 
+## The old address
+
+Optional, and apart from the stack. Before this system the bookmarks lived on GitHub Pages at `alessandra.bilardi.net/bookmarks/`, and links to that address are still around. The workflow `.github/workflows/redirect.yml` publishes there one page only, `redirect/index.html`, which sends the browser to `https://bookmarks.bilardi.net/public`.
+
+The repository is set once, before the first push:
+
+- **Actions**: enabled, in Settings, Actions, General
+- **Pages**: in Settings, Pages, the source of the build is "GitHub Actions", not "Deploy from a branch"
+
+The workflow runs on every push to `master` that changes `redirect/` or the workflow itself, and by hand:
+
+```sh
+gh workflow run redirect.yml -R bilardi/bookmarks
+gh run list -R bilardi/bookmarks --workflow redirect.yml
+```
+
+The address answers with the page that sends to the public one:
+
+```sh
+curl -s https://alessandra.bilardi.net/bookmarks/ | grep refresh
+```
+
+If it shows the README of the repository instead, built by Jekyll, the source of Pages was still "Deploy from a branch": GitHub published the whole branch with its own run, `pages build and deployment`. With the source on "GitHub Actions", the next run of the workflow replaces it.
+
+If `gh workflow run` answers `workflow redirect.yml not found on the default branch`, GitHub has not registered the workflow, even with the file on `master`: it happened here after the first push of the repository. A push that changes the workflow or `redirect/` registers it and runs it, and from then on `gh workflow list` shows "Publish the redirect".
+
 ## The checks
 
 `make check-deployed` runs at the end of every deploy, and on its own when needed. It writes nothing:
