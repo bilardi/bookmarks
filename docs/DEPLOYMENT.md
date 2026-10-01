@@ -136,8 +136,10 @@ make check-deployed
 | the site is served | the page is in the bucket, and only the distribution reads it |
 | a route of the app falls back to the page | an address like `/my/lessons` is served with the page, not as a missing file |
 | the public page is served without a login | `/public` is open to everybody |
-| the public bookmarks answer without a login | the public route has no authorizer, and CloudFront reaches it |
+| the public bookmarks answer without a login | CloudFront reaches the public function through its function URL |
 | the public bookmarks come from the cache | CloudFront keeps the public answer five minutes |
+| the public function refuses a call that is not the distribution's | the function URL takes only the requests signed by origin access control, so a direct call does not start the function |
+| the public route of the API asks for a token when called directly | the route kept for local runs is behind the authorizer |
 | the API answers through CloudFront, asking for a token | the `/api` prefix is removed, the route matched, and the authorizer is in front of it |
 | the API asks for a token when called directly too | the authorizer does not depend on CloudFront |
 | an unknown API route stays a 404 | what the API refuses arrives as the API said it |

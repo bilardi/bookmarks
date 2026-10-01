@@ -43,7 +43,7 @@ The public page has no icons and no menu: the title of each link, the tags to na
 
 ## The API
 
-Behind those pages there is one HTTP API. Deployed, it answers under `/api` on the distribution; on the machine it answers on `127.0.0.1:3000`, and under `/api` through the Vite development server. Every route needs a token, except the public one. `owner` in a query names the person whose bookmarks are read; left out, it is the caller.
+Behind those pages there is one HTTP API. Deployed, it answers under `/api` on the distribution; on the machine it answers on `127.0.0.1:3000`, and under `/api` through the Vite development server. Every route needs a token; the public read reaches the function through CloudFront and a function URL of its own, which only the distribution may call. `owner` in a query names the person whose bookmarks are read; left out, it is the caller.
 
 | Route | What it does |
 |---|---|
@@ -65,7 +65,7 @@ Behind those pages there is one HTTP API. Deployed, it answers under `/api` on t
 | `PUT /items/{id}/view` | the personal view of the caller on an item |
 | `POST /items/{id}/upload` | a URL signed for fifteen minutes, to upload the file of a new item |
 | `GET /items/{id}/download` | a URL signed for an hour, to open the file of an item |
-| `GET /public/items` | the published links, with title, link and tags only; no token, and CloudFront keeps the answer five minutes |
+| `GET /public/items` | the published links, with title, link and tags only; deployed, it is reached without a token at `/api/public/items` on the distribution, which keeps the answer five minutes and calls the function URL; locally, through the HTTP API |
 
 Writes address the own items only: the item of somebody else is simply not there. What the API refuses comes back as `{ "error": "<code>" }`, and the pages say it in words next to the action refused:
 

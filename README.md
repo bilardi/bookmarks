@@ -1,4 +1,4 @@
-# bookmarks
+# My Bookmarks - since 2026
 
 Bookmarks on AWS: links, files on Amazon S3 and short notes, organized in ordered folders and filtered by tags, shared by invitation, with a public page for the links the curator publishes.
 
@@ -6,7 +6,7 @@ Bookmarks on AWS: links, files on Amazon S3 and short notes, organized in ordere
 
 ![Architecture of bookmarks on AWS](images/architecture.drawio.png)
 
-The site and the API answer on one address. CloudFront serves the pages out of a private S3 bucket and forwards `/api` to the HTTP API, so the browser talks to a single origin. Two CloudFront Functions: one removes the `/api` prefix before the API sees the path, the other answers the routes of the app with `index.html`. `/api/public/*`, the only route without a login, has a behavior of its own: CloudFront keeps its answer five minutes, so the public page reaches the API at most once every five minutes.
+The site and the API answer on one address. CloudFront serves the pages out of a private S3 bucket and forwards `/api` to the HTTP API, so the browser talks to a single origin. Two CloudFront Functions: one removes the `/api` prefix before the API sees the path, the other answers the routes of the app with `index.html`. `/api/public/*`, the only read without a login, has a behavior of its own: CloudFront keeps its answer five minutes, and asks for it through the function URL of the public function, which takes only the requests the distribution signs. So the public page reaches the function at most once every five minutes per edge location, and nobody can call it around the cache.
 
 Behind the API there are six Lambda functions, one per group of routes plus the invitation trigger and the one that follows the uploads, and one DynamoDB table for everything: items, folders, tags, personal views, usage and invitations. Three indexes: the items of a folder in their order, the people who share something, and the published items. The counters of folders and tags are written in the same transaction as the item.
 
@@ -16,7 +16,8 @@ The identity is a Cognito user pool federated with Google, and it keeps no passw
 
 The patterns:
 
-- **CloudFront with CloudFront Functions, over a private S3 bucket and over the API alike**: one distribution serves the pages and forwards `/api`, and a cache policy of its own keeps the one public route
+- **CloudFront with CloudFront Functions, over a private S3 bucket and over the API alike**: one distribution serves the pages and forwards `/api`, and a cache policy of its own keeps the one public read
+- **A Lambda function URL behind CloudFront with origin access control**: the read without a login, which only the distribution may call, so nobody can run up its cost around the cache
 - **HTTP API to Lambda to DynamoDB**: six functions over a single table, with sparse indexes for the lists that only some records belong to
 - **A Cognito user pool federated with Google, with a pre-signup trigger as the list of invitations**: nobody gets a user without being invited first
 - **Presigned URLs and an S3 event**: the files never pass through a function, and only S3 says an upload really happened
@@ -41,7 +42,7 @@ sequenceDiagram
     COG->>T: first sign-in: may this address have a user ?
     T->>DB: the invitation of the address
     T-->>COG: the curator, or invited
-    COG-->>P: an id token, fifteen minutes long, kept in the tab
+    COG-->>P: an id token, five minutes long, kept in the tab
 ```
 
 Opening a file:
@@ -82,10 +83,11 @@ sequenceDiagram
     alt kept less than five minutes ago
         CF-->>V: the answer from the cache
     else
-        CF->>FN: no authorizer on this route
+        CF->>FN: the function URL, signed by origin access control
         FN->>DB: the index of the published items
         FN-->>V: title, link and tags, nothing else
     end
+    Note over V,FN: called directly, the function URL answers 403 and the function does not start
 ```
 
 What each page shows, what each route of the API answers, and the rules the items follow are in [docs/SITE.md](docs/SITE.md).
@@ -94,13 +96,13 @@ What each page shows, what each route of the API answers, and the rules the item
 
 **The login**. People sign in with their Google account, and only if they were invited: the trigger that runs before Cognito creates a user refuses every address without an invitation, except the one of the curator, who deployed the system. The browser is a public client, so the flow is authorization code with PKCE and the app client has no secret. The Google client ID and secret are not in this repository: they live in Parameter Store, the secret as a `SecureString`, and the deploy reads them from there.
 
-**The session**. The id token lasts fifteen minutes and the refresh token an hour, the shortest lifetimes Cognito allows, because the bookmarks are private and a token copied by a script in the page would work for an hour at most. They live in the `sessionStorage` of the tab, so closing the tab ends the session. `make ban` deletes the invitation and the user of the pool and signs the person out everywhere: the token already in hand keeps working until it expires, fifteen minutes at most, and a download URL already given until its hour is over.
+**The session**. The id token lasts five minutes and the refresh token an hour, the shortest lifetimes Cognito allows, because the bookmarks are private and a token copied by a script in the page would work for an hour at most. They live in the `sessionStorage` of the tab, so closing the tab ends the session. `make ban` deletes the invitation and the user of the pool and signs the person out everywhere: the token already in hand keeps working until it expires, five minutes at most, and a download URL already given until its hour is over.
 
 **The pages**. A script in the page could read everything its person can read, so the pages make one unlikely: the security policy lets them run only the code of the bundle, with no inline code and no `eval`; texts are always inserted as text, never as HTML, and a test fails if the frontend ever tries; a link is accepted only with `http` or `https`. The pages cannot be framed, ask for HTTPS from then on, and send no referrer, so a signed URL does not leak into the logs of another site.
 
 **The files**. The content bucket is private, with all four forms of public access blocked. Nothing reads it but the signed URLs, fifteen minutes to upload and an hour to download, and only the function that signs them has the right to read and write the files.
 
-**The public page**. It is the one route without a login, served by a function that can only read, and it answers only the title, the link and the tags of the items the curator published: the text stays with the owner and the invited. Only the curator publishes, only links, and taking the sharing away takes the publication away. The route has a request limit of its own, beside the cache of CloudFront.
+**The public page**. It is the one route without a login, served by a function that can only read, and it answers only the title, the link and the tags of the items the curator published: the text stays with the owner and the invited. Only the curator publishes, only links, and taking the sharing away takes the publication away. CloudFront reaches the function through its function URL with origin access control: a call that does not come from the distribution is refused before the function starts, so nobody can run up its cost around the cache. The route of the HTTP API to the same function stays for local runs, behind the authorizer like the others.
 
 **The curator**. Whoever holds the AWS account can read every bookmark of everybody, to help when something goes wrong, and the pages say so in their footer.
 

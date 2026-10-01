@@ -91,7 +91,7 @@
             <mxPoint x="320" y="320" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="e5" edge="1" parent="1" source="cloudfront" style="strokeColor=#232F3E;fontSize=12;fontColor=#232F3E;labelBackgroundColor=#FFFFFF;html=1;" target="httpapi" value="/api&lt;br&gt;/api/public&lt;br&gt;cached 5 min">
+        <mxCell id="e5" edge="1" parent="1" source="cloudfront" style="strokeColor=#232F3E;fontSize=12;fontColor=#232F3E;labelBackgroundColor=#FFFFFF;html=1;" target="httpapi" value="&amp;nbsp;/api&amp;nbsp;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e6" edge="1" parent="1" source="httpapi" style="strokeColor=#232F3E;fontSize=12;fontColor=#232F3E;labelBackgroundColor=#FFFFFF;html=1;" target="lambda" value="&amp;nbsp;token checked&amp;nbsp;">
@@ -137,6 +137,18 @@
             <Array as="points">
               <mxPoint x="920" y="230" />
             </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="cloudfront" style="strokeColor=#232F3E;fontSize=12;fontColor=#232F3E;labelBackgroundColor=#FFFFFF;html=1;edgeStyle=orthogonalEdgeStyle;" target="lambda" value="&lt;div&gt;/api/public,&lt;/div&gt;&lt;div&gt;cached 5 min:&lt;/div&gt;&lt;div&gt;function URL,&lt;/div&gt;&lt;div&gt;origin access control&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420.07" y="420.07" />
+              <mxPoint x="420.07" y="370.07" />
+              <mxPoint x="620.07" y="370.07" />
+              <mxPoint x="620.07" y="420.07" />
+            </Array>
+            <mxPoint x="360" y="449.9966666666666" as="sourcePoint" />
+            <mxPoint x="680" y="449.9966666666666" as="targetPoint" />
           </mxGeometry>
         </mxCell>
       </root>
