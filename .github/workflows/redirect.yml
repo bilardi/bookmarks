@@ -16,7 +16,8 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # A deploy that started finishes: only the runs still queued give way to the latest.
+  cancel-in-progress: false
 
 jobs:
   publish:
