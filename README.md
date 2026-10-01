@@ -102,7 +102,7 @@ What each page shows, what each route of the API answers, and the rules the item
 
 **The files**. The content bucket is private, with all four forms of public access blocked. Nothing reads it but the signed URLs, fifteen minutes to upload and an hour to download, and only the function that signs them has the right to read and write the files.
 
-**The public page**. It is the one route without a login, served by a function that can only read, and it answers only the title, the link and the tags of the items the curator published: the text stays with the owner and the invited. Only the curator publishes, only links, and taking the sharing away takes the publication away. CloudFront reaches the function through its function URL with origin access control: a call that does not come from the distribution is refused before the function starts, so nobody can run up its cost around the cache. The route of the HTTP API to the same function stays for local runs, behind the authorizer like the others.
+**The public page**. It is the one route without a login, served by a function that can only read, and it answers only the title, the link and the tags of the items the curator published: the text stays with the owner and the invited. Only the curator publishes, only links, and taking the sharing away takes the publication away. CloudFront reaches the function through its function URL with origin access control: a call that does not come from the distribution is refused before the function starts, so nobody can run up its cost around the cache: [docs/FUNCTION_URL.md](docs/FUNCTION_URL.md) shows that the refused calls never become invocations. The route of the HTTP API to the same function stays for local runs, behind the authorizer like the others.
 
 **The curator**. Whoever holds the AWS account can read every bookmark of everybody, to help when something goes wrong, and the pages say so in their footer.
 
@@ -225,7 +225,7 @@ sam/  # data, identity, backend and site, nested in the root template; the certi
 local/  # DynamoDB Local, its table, and the environment of sam local
 scripts/  # checks on the deployed system
 redirect/  # the page that sends the old address of the bookmarks to the public page
-docs/  # setup, deployment, the site and the API, the import
+docs/  # setup, deployment, the site and the API, the import, the test of the function URL
 images/  # the architecture diagram, as draw.io source and as PNG
 .github/workflows/  # the redirect on GitHub Pages
 template.yaml  # SAM root template
