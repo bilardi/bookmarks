@@ -129,13 +129,6 @@ Resources:
               # The id token carries the name and the email, and the gateway
               # matches it on aud.
               audience: [!Ref Audience]
-      # The public route answers anybody: a limit of its own, beside the cache of
-      # CloudFront, which already sends it one request every five minutes per edge
-      # location. One request a second, with up to five at once.
-      RouteSettings:
-        "GET /public/items":
-          ThrottlingBurstLimit: 5
-          ThrottlingRateLimit: 1
 
   ItemsLogGroup:
     Type: AWS::Logs::LogGroup
@@ -269,7 +262,11 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${ProjectName}-public"
       RetentionInDays: 7
 
-  # The page without a login reads through this one, which can only read.
+  # The page without a login reads through this one, which can only read. CloudFront
+  # calls it through its function URL, signing every request with origin access
+  # control: a call that does not come from the distribution is refused before the
+  # function starts, so nobody outside can run up its cost. The route of the HTTP
+  # API stays behind the authorizer, for sam local, which has no function URLs.
   PublicFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -280,10 +277,12 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref TableName
+      FunctionUrlConfig:
+        AuthType: AWS_IAM
       Events:
         PublicItems:
           Type: HttpApi
-          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /public/items, Auth: { Authorizer: NONE } }
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /public/items }
 
 Outputs:
   ApiUrl:
@@ -295,3 +294,9 @@ Outputs:
   ContentOrigin:
     Description: The origin of the signed URLs, for the security policy of the pages
     Value: !Sub "https://${ContentBucket}.s3.${AWS::Region}.amazonaws.com"
+  PublicFunctionUrl:
+    Description: The function URL of the public reads, which only the distribution may call
+    Value: !GetAtt PublicFunctionUrl.FunctionUrl
+  PublicFunctionName:
+    Description: The public function, for the permissions the distribution needs on it
+    Value: !Ref PublicFunction

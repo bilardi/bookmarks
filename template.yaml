@@ -119,6 +119,8 @@ Resources:
         ProjectName: !Ref AWS::StackName
         ApiDomain: !Select [2, !Split ["/", !GetAtt Serverless.Outputs.ApiUrl]]
         ContentOrigin: !GetAtt Serverless.Outputs.ContentOrigin
+        PublicFunctionDomain: !Select [2, !Split ["/", !GetAtt Serverless.Outputs.PublicFunctionUrl]]
+        PublicFunctionName: !GetAtt Serverless.Outputs.PublicFunctionName
         # The login of the pages reads the metadata of the pool from the issuer and
         # asks for the tokens on the login domain.
         CognitoOrigins: !Sub
@@ -159,6 +161,9 @@ Outputs:
   ContentBucketName:
     Description: Bucket of the files
     Value: !GetAtt Serverless.Outputs.ContentBucketName
+  PublicFunctionUrl:
+    Description: The function URL of the public reads, which refuses any call but the distribution's
+    Value: !GetAtt Serverless.Outputs.PublicFunctionUrl
   TableName:
     Description: DynamoDB single-table name
     Value: !GetAtt Data.Outputs.TableName

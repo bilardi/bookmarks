@@ -23,8 +23,9 @@ API="$(output ApiUrl)"
 LOGIN="$(output HostedUiDomain)"
 CLIENT="$(output UserPoolClientId)"
 CONTENT="$(output ContentBucketName)"
+PUBLIC="$(output PublicFunctionUrl)"
 
-if [ -z "$SITE" ] || [ -z "$API" ] || [ -z "$LOGIN" ] || [ -z "$CLIENT" ] || [ -z "$CONTENT" ]; then
+if [ -z "$SITE" ] || [ -z "$API" ] || [ -z "$LOGIN" ] || [ -z "$CLIENT" ] || [ -z "$CONTENT" ] || [ -z "$PUBLIC" ]; then
     echo "no outputs from the stack $STACK in $REGION: check the profile, or deploy first"
     exit 1
 fi
@@ -63,6 +64,10 @@ check "the public bookmarks answer without a login" 200 "$(status "$SITE/api/pub
 curl -s -o /dev/null "$SITE/api/public/items" || true
 contains "the public bookmarks come from the cache" "x-cache: hit from cloudfront" \
     "$(curl -s -o /dev/null -D - "$SITE/api/public/items" | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
+# Only the distribution may run the public function: a direct call is refused before
+# it starts, and the route of the API behind it asks for a token.
+check "the public function refuses a call that is not the distribution's" 403 "$(status "${PUBLIC}public/items")"
+check "the public route of the API asks for a token when called directly" 401 "$(status "$API/public/items")"
 check "the API answers through CloudFront, asking for a token" 401 "$(status "$SITE/api/me")"
 check "the API asks for a token when called directly too" 401 "$(status "$API/me")"
 check "an unknown API route stays a 404" 404 "$(status "$SITE/api/nothing-here")"

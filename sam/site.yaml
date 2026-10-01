@@ -8,6 +8,12 @@ Parameters:
   ApiDomain:
     Type: String
     Description: Host name of the HTTP API, without scheme
+  PublicFunctionDomain:
+    Type: String
+    Description: Host name of the function URL of the public reads, without scheme
+  PublicFunctionName:
+    Type: String
+    Description: The public function, which only this distribution may call
   ContentOrigin:
     Type: String
     Description: The origin of the signed URLs of the files, which the pages may reach
@@ -47,6 +53,17 @@ Resources:
       OriginAccessControlConfig:
         Name: !Sub "${ProjectName}-site"
         OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # The same signature for the function URL of the public reads: the function URL
+  # takes only signed requests, and only this distribution may sign them.
+  PublicOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${ProjectName}-public"
+        OriginAccessControlOriginType: lambda
         SigningBehavior: always
         SigningProtocol: sigv4
 
@@ -169,6 +186,11 @@ Resources:
             DomainName: !Ref ApiDomain
             CustomOriginConfig:
               OriginProtocolPolicy: https-only
+          - Id: public
+            DomainName: !Ref PublicFunctionDomain
+            OriginAccessControlId: !GetAtt PublicOriginAccessControl.Id
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
         DefaultCacheBehavior:
           TargetOriginId: site
           ViewerProtocolPolicy: redirect-to-https
@@ -181,7 +203,7 @@ Resources:
         CacheBehaviors:
           # Before /api/*, since CloudFront takes the first pattern that matches.
           - PathPattern: /api/public/*
-            TargetOriginId: api
+            TargetOriginId: public
             ViewerProtocolPolicy: https-only
             AllowedMethods: [GET, HEAD]
             CachePolicyId: !Ref PublicCachePolicy
@@ -199,6 +221,25 @@ Resources:
             FunctionAssociations:
               - EventType: viewer-request
                 FunctionARN: !GetAtt StripApiPrefix.FunctionMetadata.FunctionARN
+
+  # CloudFront needs both permissions on a function URL with origin access control,
+  # and only for this distribution.
+  PublicFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PublicFunctionName
+      Action: lambda:InvokeFunctionUrl
+      FunctionUrlAuthType: AWS_IAM
+      Principal: cloudfront.amazonaws.com
+      SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  PublicFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PublicFunctionName
+      Action: lambda:InvokeFunction
+      Principal: cloudfront.amazonaws.com
+      SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
 
 Outputs:
   SiteUrl:

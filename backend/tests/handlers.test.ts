@@ -132,4 +132,23 @@ describe("public handler", () => {
     expect(res.headers?.["cache-control"]).toBe("public, max-age=300");
     expect(Array.isArray(JSON.parse(String(res.body)))).toBe(true);
   });
+
+  it("answers CloudFront through the function URL, where every path arrives as $default", async () => {
+    const res = await publicItems({
+      routeKey: "$default",
+      rawPath: "/public/items",
+      requestContext: { http: { method: "GET" } },
+    } as unknown as Parameters<typeof publicItems>[0]);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers?.["cache-control"]).toBe("public, max-age=300");
+  });
+
+  it("refuses any other path of the function URL", async () => {
+    const res = await publicItems({
+      routeKey: "$default",
+      rawPath: "/items",
+      requestContext: { http: { method: "GET" } },
+    } as unknown as Parameters<typeof publicItems>[0]);
+    expect(res.statusCode).toBe(404);
+  });
 });
